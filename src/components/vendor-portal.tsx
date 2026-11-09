@@ -100,7 +100,7 @@ export function VendorPortal({ token }: { token: string }) {
     <div className="flex flex-col gap-6">
       <div>
         <p className="mono text-xs text-muted">{view.ref}{view.version > 1 ? ` · round ${view.version}` : ""}</p>
-        <h1 className="mt-2 font-display text-[36px] leading-tight sm:text-[44px]">{view.editable && !view.submittedAt ? `Welcome, ${view.company}` : view.company}</h1>
+        <h1 className="display mt-3 text-[34px] sm:text-[48px]">{view.editable && !view.submittedAt ? `Welcome, ${view.company}` : view.company}</h1>
         {view.contact && <p className="mt-2 text-sm text-ink-2">Your contact: {view.contact.name ?? view.contact.email} · <a className="underline underline-offset-4" href={`mailto:${view.contact.email}`}>{view.contact.email}</a></p>}
       </div>
       {view.editable ? <PortalForm token={token} view={view} onSubmitted={reload} /> : <StatusView view={view} />}

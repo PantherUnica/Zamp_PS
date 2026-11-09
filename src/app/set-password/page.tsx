@@ -10,7 +10,7 @@ export default async function SetPassword() {
   const { data } = await (await authClient()).auth.getUser();
   if (!data.user) redirect("/login?error=link");
   return (
-    <main className="grid min-h-dvh place-items-center bg-surface px-4">
+    <main className="grid min-h-dvh place-items-center px-4">
       <div className="w-full max-w-[360px]">
         <Mark />
         <h1 className="mt-10 text-lg font-semibold">Set your password</h1>

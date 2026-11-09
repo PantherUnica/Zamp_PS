@@ -82,13 +82,13 @@ export function SourceTag({ source }: { source: string }) {
 const BTN = {
   primary: "bg-accent text-white border border-accent hover:bg-accent-hover hover:border-accent-hover",
   dark: "bg-ink text-white border border-ink hover:bg-ink-2",
-  secondary: "bg-surface text-ink border border-line-strong hover:bg-subtle",
+  secondary: "bg-transparent text-ink border border-ink/80 hover:bg-ink hover:text-white",
   danger: "bg-surface text-danger border border-line-strong hover:bg-danger-soft",
   ghost: "text-ink-2 border border-transparent hover:bg-subtle",
 };
 
 export function buttonClass(variant: keyof typeof BTN = "secondary", size: "md" | "sm" = "md") {
-  return `t-colors inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium disabled:cursor-not-allowed disabled:opacity-40 ${size === "md" ? "h-9 px-4 text-base" : "h-8 px-3 text-sm"} ${BTN[variant]}`;
+  return `t-colors inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-semibold uppercase tracking-[0.01em] disabled:cursor-not-allowed disabled:opacity-40 ${size === "md" ? "h-10 px-5 text-[13px]" : "h-8 px-4 text-xs"} ${BTN[variant]}`;
 }
 
 export function Button({ variant = "secondary", size = "md", className = "", ...props }: ComponentProps<"button"> & { variant?: keyof typeof BTN; size?: "md" | "sm" }) {
@@ -104,7 +104,7 @@ export function Panel({ title, meta, children, className = "", bodyClass = "", i
     <section id={id} className={`rounded-[10px] border border-line bg-surface ${className}`}>
       {title && (
         <header className="flex min-h-12 items-center justify-between gap-4 border-b border-line px-4 py-3">
-          <h2 className="text-base font-semibold">{title}</h2>
+          <h2 className="label flex items-center gap-2"><span className="size-2 rounded-full bg-ink" aria-hidden />{title}</h2>
           {meta && <div className="flex items-center gap-2 text-sm text-muted">{meta}</div>}
         </header>
       )}
@@ -115,10 +115,10 @@ export function Panel({ title, meta, children, className = "", bodyClass = "", i
 
 export function PageHeader({ eyebrow, title, meta, actions }: { eyebrow?: ReactNode; title: ReactNode; meta?: ReactNode; actions?: ReactNode }) {
   return (
-    <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mb-8 flex flex-col gap-4 border-b border-ink pb-6 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
-        {eyebrow && <div className="mb-1 text-xs font-medium text-muted">{eyebrow}</div>}
-        <h1 className="truncate text-lg font-semibold tracking-[-0.01em]">{title}</h1>
+        {eyebrow && <div className="label mb-2 text-muted">{eyebrow}</div>}
+        <h1 className="display truncate text-[32px] sm:text-[40px]">{title}</h1>
         {meta && <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">{meta}</div>}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>}

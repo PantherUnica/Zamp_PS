@@ -11,7 +11,7 @@ export function Mark({ compact }: { compact?: boolean }) {
         <path d="M6 7.5h10M6 11h7M6 14.5h4" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" />
         <circle cx="15.5" cy="14.5" r="1.8" fill="#c2410c" />
       </svg>
-      {!compact && <span className="text-sm font-semibold tracking-[-0.01em]">Onboard</span>}
+      {!compact && <span className="text-[15px] font-extrabold uppercase tracking-[-0.04em]">Onboard<sup className="ml-px text-[9px]">®</sup></span>}
     </span>
   );
 }
@@ -27,7 +27,7 @@ export function AppShell({ me, nav, children }: { me: { name: string; email: str
   const active = (href: string) => path === href || path.startsWith(href + "/");
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[232px_1fr]">
-      <aside className="hidden border-r border-line bg-surface lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col">
+      <aside className="hidden border-r border-ink/15 bg-canvas lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col">
         <div className="px-4 pt-5 pb-6">
           <Link href="/dashboard" aria-label="Overview"><Mark /></Link>
         </div>
@@ -37,10 +37,9 @@ export function AppShell({ me, nav, children }: { me: { name: string; email: str
               key={n.href}
               href={n.href}
               aria-current={active(n.href) ? "page" : undefined}
-              className={`t-colors relative flex items-center justify-between rounded-md px-3 py-1.5 text-base ${active(n.href) ? "bg-subtle font-medium text-ink" : "text-ink-2 hover:bg-subtle"}`}
+              className={`t-colors relative flex items-center justify-between rounded-md px-3 py-2 text-[13px] font-semibold uppercase tracking-[0.01em] ${active(n.href) ? "text-ink" : "text-muted hover:text-ink"}`}
             >
-              {active(n.href) && <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded bg-accent" aria-hidden />}
-              {n.label}
+              <span className="flex items-center gap-2.5"><span className={`size-1.5 rounded-full ${active(n.href) ? "bg-accent" : "bg-transparent"}`} aria-hidden />{n.label}</span>
               {!!n.badge && <span className="mono rounded bg-accent-soft px-1.5 text-xs font-medium text-accent">{n.badge}</span>}
             </Link>
           ))}

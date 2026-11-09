@@ -74,8 +74,24 @@ async function emailsFor(subId: string) {
   return data ?? [];
 }
 
+/** Makes the test re-runnable: removes vendors (and their files) created by earlier E2E runs. */
+async function cleanup() {
+  const { data: old } = await db.from("vendors").select("id").eq("source", "E2E");
+  const ids = (old ?? []).map((v) => v.id);
+  if (!ids.length) return;
+  const { data: subs } = await db.from("submissions").select("id").in("vendor_id", ids);
+  for (const s of subs ?? []) {
+    const { data: docs } = await db.from("documents").select("storage_path").eq("submission_id", s.id);
+    const paths = (docs ?? []).map((d) => d.storage_path);
+    if (paths.length) await db.storage.from("vendor-documents").remove(paths);
+  }
+  await db.from("vendors").delete().in("id", ids); // submissions, runs, documents, emails, events cascade
+  console.log(`Cleaned up ${ids.length} vendor(s) from earlier E2E runs.\n`);
+}
+
 async function main() {
   console.log(`E2E against ${BASE} · vendor emails → ${INBOX}\n`);
+  await cleanup();
   let failures = 0;
   for (const s of SAMPLE_CASES) {
     console.log(s.label);

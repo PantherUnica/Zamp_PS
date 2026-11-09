@@ -6,7 +6,7 @@ import { useEffect, useRef } from "react";
  * Dots the scan passes darken briefly; now and then one turns orange and sends out a ring,
  * a check completing. Canvas only, pauses when hidden, static for reduced-motion users.
  */
-export function LandingBackdrop() {
+export function LandingBackdrop({ tone = "light" }: { tone?: "light" | "dark" }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -59,7 +59,7 @@ export function LandingBackdrop() {
           const r = 1 + glow * 0.7;
           ctx!.beginPath();
           ctx!.arc(x, y, r, 0, Math.PI * 2);
-          ctx!.fillStyle = `rgba(28,25,23,${alpha})`;
+          ctx!.fillStyle = tone === "dark" ? `rgba(242,241,238,${alpha * 0.9})` : `rgba(28,25,23,${alpha})`;
           ctx!.fill();
         }
       }
@@ -109,7 +109,7 @@ export function LandingBackdrop() {
       ro.disconnect();
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, []);
+  }, [tone]);
 
   return (
     <canvas

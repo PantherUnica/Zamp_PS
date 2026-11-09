@@ -16,10 +16,10 @@ export default async function Login({ searchParams }: PageProps<"/login">) {
   const notMember = Boolean(data.user);
   const error = sp.error === "link" ? "That sign-in link has expired or was already used. Ask an admin for a new one." : notMember ? "Your login is not part of this workspace yet. Ask an admin to add you." : null;
   return (
-    <main className="grid min-h-dvh place-items-center bg-surface px-4">
+    <main className="grid min-h-dvh place-items-center px-4">
       <div className="w-full max-w-[360px]">
         <Link href="/"><Mark /></Link>
-        <h1 className="mt-10 font-display text-[36px] leading-tight">Welcome back</h1>
+        <h1 className="display mt-10 text-[48px]">Welcome back</h1>
         <p className="mt-2 mb-8 text-sm text-muted">Sign in to log calls, send onboarding links and review vendors.</p>
         <LoginForm next={next} error={error} />
         <p className="mt-8 text-xs text-muted">Vendors do not need an account. Use the link in your invitation email.</p>

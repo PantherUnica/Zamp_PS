@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import { Geist_Mono, Schibsted_Grotesk } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+// One grotesk for everything (display + UI), mono for machine values (GSTIN, PAN, refs).
+const grotesk = Schibsted_Grotesk({ variable: "--font-grotesk", subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
-const serif = Instrument_Serif({ variable: "--font-instrument-serif", subsets: ["latin"], weight: "400" });
 
 export const metadata: Metadata = {
-  title: { default: "Vendor Onboarding", template: "%s · Vendor Onboarding" },
+  title: { default: "Onboard® · Vendor onboarding", template: "%s · Onboard®" },
   description: "From first call to approved vendor: magic-link onboarding, agentic verification and human sign-off.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${serif.variable} antialiased`}>
+    <html lang="en" className={`${grotesk.variable} ${geistMono.variable} antialiased`}>
       <body className="min-h-dvh">{children}</body>
     </html>
   );
