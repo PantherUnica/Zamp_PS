@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { CallAnalysis } from "@/lib/types";
 import { validateGstin, validatePan } from "@/lib/rules/validators";
+import { HARD_TRANSCRIPT } from "@/lib/demo-transcripts";
 import { Check, Spark, Upload } from "./icons";
 import { Button, inputClass } from "./ui";
 
@@ -59,7 +60,10 @@ export function CallUploader({ vendors, defaultVendor }: { vendors: { id: string
               <button type="button" key={m} role="tab" aria-selected={mode === m} onClick={() => setMode(m)} className={`rounded-[5px] px-3 py-1 ${mode === m ? "bg-subtle font-medium" : "text-ink-2"}`}>{m === "paste" ? "Paste transcript" : "Upload file"}</button>
             ))}
           </div>
-          <Button type="button" size="sm" variant="ghost" onClick={() => { setMode("paste"); setForm((f) => ({ ...f, transcript: DEMO_TRANSCRIPT, title: f.title || "Intro call · Brightline Packaging", duration_minutes: f.duration_minutes || "18" })); }}>Use demo transcript</Button>
+          <span className="flex flex-wrap gap-1">
+            <Button type="button" size="sm" variant="ghost" onClick={() => { setMode("paste"); setForm((f) => ({ ...f, transcript: DEMO_TRANSCRIPT, title: "Intro call · Brightline Packaging", duration_minutes: "18" })); }}>Demo transcript</Button>
+            <Button type="button" size="sm" variant="ghost" title="Hinglish, a misheard GSTIN, a third-party account request and an attempt to get pre-approved" onClick={() => { setMode("paste"); setForm((f) => ({ ...f, transcript: HARD_TRANSCRIPT, title: "Intro call · Rayalaseema Cold Chain (hard test)", duration_minutes: "4" })); }}>Hard test call</Button>
+          </span>
         </div>
         {mode === "paste" ? (
           <textarea aria-label="Transcript" value={form.transcript} onChange={(e) => set("transcript", e.target.value)} rows={18} placeholder={"Paste the call transcript here.\n\nSpeaker labels help but are not required."} className="block w-full resize-y rounded-b-[10px] bg-surface px-4 py-3 text-sm leading-6 outline-none placeholder:text-muted" />

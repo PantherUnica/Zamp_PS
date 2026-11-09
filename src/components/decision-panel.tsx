@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Finding } from "@/lib/types";
 import { Lock } from "./icons";
+import { celebrate } from "./mission";
 import { Button } from "./ui";
 
 type Action = "approve" | "request_info" | "reject";
@@ -61,6 +62,7 @@ export function DecisionPanel({ vendorId, refCode, legalName, status, recommenda
       if (!res.ok) throw new Error(body.error ?? "Decision failed");
       if (body.email?.status === "failed") setError(`Saved, but the email to the vendor failed: ${body.email.error}. Retry it from Emails.`);
       setConfirmOpen(false);
+      if (action === "approve") celebrate();
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Decision failed");

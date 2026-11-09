@@ -26,8 +26,11 @@ export async function POST(_req: Request, ctx: RouteContext<"/api/v/[token]/docu
     const name = c.doc.storage_path.split("/").pop()!;
     const { data: listed, error } = await db.storage.from(STORAGE_BUCKET).list(folder, { search: name });
     if (error || !listed?.some((o) => o.name === name)) return fail("The upload did not complete. Please try again.", 422);
-    await db.from("documents").update({ superseded: true }).eq("submission_id", c.sub.id).eq("slot", c.doc.slot).eq("version", c.doc.version).eq("uploaded", true).neq("id", c.doc.id);
-    await db.from("documents").update({ uploaded: true }).eq("id", c.doc.id);
+    const { error: e1 } = await db.from("documents").update({ superseded: true }).eq("submission_id", c.sub.id).eq("slot", c.doc.slot).eq("version", c.doc.version).eq("uploaded", true).neq("id", c.doc.id);
+    if (e1) throw new Error(`Could not replace the earlier upload: ${e1.message}`);
+    // Never report success unless the document is really marked uploaded: otherwise the agent later sees it as missing.
+    const { error: e2 } = await db.from("documents").update({ uploaded: true }).eq("id", c.doc.id);
+    if (e2) throw new Error(`Could not save the upload: ${e2.message}`);
     await logEvent({ vendorId: c.sub.vendor_id, submissionId: c.sub.id, actor: staff ? "staff" : "vendor", actorEmail: staff?.email ?? null, action: "document_uploaded", note: `${c.doc.slot.replace(/_/g, " ")}: ${c.doc.file_name}` });
     return json({ ok: true });
   } catch (err) {

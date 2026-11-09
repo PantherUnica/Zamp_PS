@@ -161,6 +161,73 @@ export async function getDashboard(me: { id: string; role: Role }) {
   };
 }
 
+// ---------------------------------------------------------------- mission control (last 7 days)
+export interface MissionStats {
+  checks: { pass: number; warn: number; fail: number; skip: number };
+  /** Share of decisive checks (pass/warn/fail) that passed, 0–100; null when nothing ran. */
+  health: number | null;
+  flagsCaught: number;
+  runs: number;
+  caught: { code: string; title: string; count: number; severity: string }[];
+  team: { id: string; name: string; flags: number; corrections: number; calls: number; invites: number }[];
+}
+
+const SEV_RANK: Record<string, number> = { block: 3, review: 2, fixable: 1, info: 0 };
+
+/**
+ * Week-long roll-up for the dashboard infographics. Rewards catching problems, never approval volume:
+ * the scoreboard counts flags raised on a person's vendors, corrections sent, calls logged and invites.
+ */
+export async function getMission(vendors: { id: string; owner_id: string | null }[]): Promise<MissionStats> {
+  const db = admin();
+  const since = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const [{ data: runs }, { data: emails }, { data: calls }, { data: staff }] = await Promise.all([
+    db.from("runs").select("id, checks:result->checks, findings:result->findings, submissions!inner(vendor_id)").eq("status", "completed").gte("created_at", since).limit(500),
+    db.from("emails").select("kind, sent_by").eq("status", "sent").in("kind", ["correction_request", "invite"]).gte("created_at", since),
+    db.from("calls").select("logged_by").gte("created_at", since),
+    db.from("profiles").select("id, full_name, email"),
+  ]);
+  const owner = new Map(vendors.map((v) => [v.id, v.owner_id]));
+  const checks = { pass: 0, warn: 0, fail: 0, skip: 0 };
+  const caught = new Map<string, { code: string; title: string; count: number; severity: string }>();
+  const flagsBy = new Map<string, number>();
+  let flagsCaught = 0;
+  type RunRow = { checks: { status: keyof typeof checks }[] | null; findings: { code: string; title: string; severity: string }[] | null; submissions: { vendor_id: string | null } | { vendor_id: string | null }[] };
+  for (const r of (runs ?? []) as unknown as RunRow[]) {
+    for (const c of r.checks ?? []) if (c.status in checks) checks[c.status]++;
+    const flags = (r.findings ?? []).filter((f) => f.severity !== "info");
+    flagsCaught += flags.length;
+    const o = owner.get(one(r.submissions)?.vendor_id ?? "");
+    if (o) flagsBy.set(o, (flagsBy.get(o) ?? 0) + flags.length);
+    for (const f of flags) {
+      const cur = caught.get(f.code) ?? { code: f.code, title: f.title, count: 0, severity: f.severity };
+      cur.count++;
+      if ((SEV_RANK[f.severity] ?? 0) > (SEV_RANK[cur.severity] ?? 0)) cur.severity = f.severity;
+      caught.set(f.code, cur);
+    }
+  }
+  const decisive = checks.pass + checks.warn + checks.fail;
+  const count = (rows: { [k: string]: unknown }[] | null, key: string, kind?: string) => {
+    const m = new Map<string, number>();
+    for (const r of rows ?? []) if ((!kind || r.kind === kind) && typeof r[key] === "string") m.set(r[key] as string, (m.get(r[key] as string) ?? 0) + 1);
+    return m;
+  };
+  const corrections = count(emails, "sent_by", "correction_request");
+  const invites = count(emails, "sent_by", "invite");
+  const logged = count(calls, "logged_by");
+  const team = (staff ?? [])
+    .map((p) => ({ id: p.id as string, name: (p.full_name as string | null) || (p.email as string).split("@")[0], flags: flagsBy.get(p.id) ?? 0, corrections: corrections.get(p.id) ?? 0, calls: logged.get(p.id) ?? 0, invites: invites.get(p.id) ?? 0 }))
+    .sort((a, b) => b.flags + b.corrections * 2 + b.calls - (a.flags + a.corrections * 2 + a.calls));
+  return {
+    checks,
+    health: decisive ? Math.round((checks.pass / decisive) * 100) : null,
+    flagsCaught,
+    runs: runs?.length ?? 0,
+    caught: [...caught.values()].sort((a, b) => b.count - a.count).slice(0, 7),
+    team,
+  };
+}
+
 // ---------------------------------------------------------------- emails, calls, team
 export async function listEmails(filter: string) {
   let q = admin().from("emails").select("*, vendors(ref, company_name)").order("created_at", { ascending: false }).limit(200);

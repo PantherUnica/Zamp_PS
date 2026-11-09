@@ -227,8 +227,11 @@ export async function executeRun(runId: string): Promise<void> {
     });
 
     const finished = new Date().toISOString();
-    await db.from("runs").update({ status: "completed", recommendation: decision.recommendation, result, finished_at: finished }).eq("id", runId);
-    await db.from("submissions").update({ status: decision.route, recommendation: decision.recommendation, updated_at: finished }).eq("id", sub.id);
+    // Route the submission first: anyone who sees the run "completed" must also see its final status.
+    const { error: subErr } = await db.from("submissions").update({ status: decision.route, recommendation: decision.recommendation, updated_at: finished }).eq("id", sub.id);
+    if (subErr) throw new Error(`Could not route the submission: ${subErr.message}`);
+    const { error: runErr } = await db.from("runs").update({ status: "completed", recommendation: decision.recommendation, result, finished_at: finished }).eq("id", runId);
+    if (runErr) throw new Error(`Could not save the run result: ${runErr.message}`);
     if (vendor) await db.from("vendors").update({ updated_at: finished }).eq("id", vendor.id);
     await logEvent({ vendorId: sub.vendor_id, submissionId: sub.id, runId, actor: "agent", action: "recommended", note: decision.summary, data: { recommendation: decision.recommendation, reasons: decision.reasons, counts } });
   } catch (err) {

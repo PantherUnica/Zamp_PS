@@ -18,12 +18,9 @@ const INBOX = process.env.E2E_EMAIL || process.env.GMAIL_USER || "vendor@example
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
 const anon = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false } });
 
-const EXPECT: Record<string, { rec: string; status: string; codes: string[]; email: "auto" | "draft" | "none" }> = {
-  happy: { rec: "approve", status: "awaiting_review", codes: [], email: "none" },
-  incomplete: { rec: "pending", status: "awaiting_vendor", codes: ["MISSING_DOCUMENT"], email: "auto" },
-  "bank-mismatch": { rec: "pending", status: "awaiting_review", codes: ["BANK_NAME_MISMATCH"], email: "none" },
-  "tax-invalid": { rec: "pending", status: "awaiting_review", codes: ["GSTIN_STATE_MISMATCH", "GSTIN_PAN_MISMATCH", "GSTIN_DOCUMENT_CONFLICT"], email: "none" },
-};
+/** Gmail plus-addressing: every case lands in the same inbox but is labelled, e.g. you+case07@gmail.com. */
+const inboxFor = (n: number) => INBOX.replace(/^([^@+]+)(\+[^@]*)?@/, `$1+case${String(n).padStart(2, "0")}@`);
+const ONLY = (process.env.E2E_ONLY ?? "").split(",").map((x) => x.trim()).filter(Boolean);
 
 const file = (url: string) => readFileSync(join(process.cwd(), "public", url));
 
@@ -34,14 +31,14 @@ async function api(path: string, init: { method: string; body?: unknown }) {
   return json;
 }
 
-async function setupVendor(s: SampleCase) {
+async function setupVendor(s: SampleCase, email: string) {
   const { data: owner } = await db.from("profiles").select("id").order("created_at").limit(1).single();
-  const { data: v, error } = await db.from("vendors").insert({ ...s.vendor, contact_email: INBOX, source: "E2E", owner_id: owner?.id ?? null, created_by: owner?.id ?? null }).select("id, ref").single();
+  const { data: v, error } = await db.from("vendors").insert({ ...s.vendor, contact_email: email, source: "E2E", owner_id: owner?.id ?? null, created_by: owner?.id ?? null }).select("id, ref").single();
   if (error || !v) throw new Error(`vendor insert: ${error?.message}`);
   const token = randomBytes(24).toString("hex");
   const { data: sub, error: e2 } = await db
     .from("submissions")
-    .insert({ vendor_id: v.id, legal_name: s.vendor.company_name, contact_email: INBOX, status: "draft", current_version: 1, access_token: token, link_expires_at: new Date(Date.now() + 14 * 86_400_000).toISOString(), draft_data: { legal_name: s.vendor.company_name } })
+    .insert({ vendor_id: v.id, legal_name: s.vendor.company_name, contact_email: email, status: "draft", current_version: 1, access_token: token, link_expires_at: new Date(Date.now() + 14 * 86_400_000).toISOString(), draft_data: { legal_name: s.vendor.company_name } })
     .select("id, ref")
     .single();
   if (e2 || !sub) throw new Error(`submission insert: ${e2?.message}`);
@@ -51,10 +48,20 @@ async function setupVendor(s: SampleCase) {
 async function uploadAll(token: string, files: SampleCase["files"]) {
   for (const f of files) {
     const bytes = file(f.url);
-    const up = await api(`/api/v/${token}/documents`, { method: "POST", body: { slot: f.slot, name: f.name, type: "application/pdf", size: bytes.length } });
-    const { error } = await anon.storage.from("vendor-documents").uploadToSignedUrl(up.path, up.token, bytes, { contentType: "application/pdf" });
-    if (error) throw new Error(`upload ${f.name}: ${error.message}`);
-    await api(`/api/v/${token}/documents/${up.documentId}`, { method: "POST" });
+    // Like a browser retrying: on a network drop, ask for a fresh signed URL and upload again.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        const up = await api(`/api/v/${token}/documents`, { method: "POST", body: { slot: f.slot, name: f.name, type: "application/pdf", size: bytes.length } });
+        const { error } = await anon.storage.from("vendor-documents").uploadToSignedUrl(up.path, up.token, bytes, { contentType: "application/pdf" });
+        if (error) throw new Error(`upload ${f.name}: ${error.message}`);
+        await api(`/api/v/${token}/documents/${up.documentId}`, { method: "POST" });
+        break;
+      } catch (e) {
+        if (attempt >= 3) throw e;
+        console.log(`    retrying ${f.name} after: ${e instanceof Error ? e.message : e}`);
+        await new Promise((r) => setTimeout(r, 1000 * attempt));
+      }
+    }
   }
 }
 
@@ -75,8 +82,8 @@ async function emailsFor(subId: string) {
 }
 
 /** Makes the test re-runnable: removes vendors (and their files) created by earlier E2E runs. */
-async function cleanup() {
-  const { data: old } = await db.from("vendors").select("id").eq("source", "E2E");
+async function cleanup(names: string[]) {
+  const { data: old } = await db.from("vendors").select("id").eq("source", "E2E").in("company_name", names);
   const ids = (old ?? []).map((v) => v.id);
   if (!ids.length) return;
   const { data: subs } = await db.from("submissions").select("id").in("vendor_id", ids);
@@ -91,18 +98,21 @@ async function cleanup() {
 
 async function main() {
   console.log(`E2E against ${BASE} · vendor emails → ${INBOX}\n`);
-  await cleanup();
   let failures = 0;
-  for (const s of SAMPLE_CASES) {
-    console.log(s.label);
-    const ctx = await setupVendor(s);
-    const data = { ...s.data, contact_email: INBOX };
+  const table: string[] = [];
+  const cases = SAMPLE_CASES.filter((s) => !ONLY.length || ONLY.includes(s.id) || ONLY.includes(String(s.n)));
+  await cleanup(cases.map((s) => s.vendor.company_name));
+  for (const s of cases) {
+    const email = inboxFor(s.n);
+    console.log(`#${s.n} ${s.label}  → ${email}`);
+    const ctx = await setupVendor(s, email);
+    const data = { ...s.data, contact_email: email };
     await api(`/api/v/${ctx.token}/draft`, { method: "PUT", body: { data: { legal_name: data.legal_name } } });
     await uploadAll(ctx.token, s.files);
     const { runId } = await api(`/api/v/${ctx.token}/submit`, { method: "POST", body: { data } });
     const run = await waitRun(runId);
     const { data: sub } = await db.from("submissions").select("status").eq("id", ctx.subId).single();
-    const exp = EXPECT[s.id];
+    const exp = s.check;
     const codes: string[] = (run.result?.findings ?? []).filter((f: { severity: string }) => f.severity !== "info").map((f: { code: string }) => f.code);
     const mails = await emailsFor(ctx.subId);
     const problems: string[] = [];
@@ -111,11 +121,14 @@ async function main() {
     if (sub?.status !== exp.status) problems.push(`status ${sub?.status} ≠ ${exp.status}`);
     for (const c of exp.codes) if (!codes.includes(c)) problems.push(`missing finding ${c}`);
     if (!mails.some((m) => m.kind === "submission_received")) problems.push("no submission confirmation email recorded");
-    if (exp.email === "auto" && !mails.some((m) => m.kind === "correction_request" && m.status !== "draft")) problems.push("missing-document request was not auto-sent");
+    const extra = codes.filter((c) => !exp.codes.includes(c));
+    if (exp.autoEmail && !mails.some((m) => m.kind === "correction_request" && m.status !== "draft")) problems.push("missing-document request was not auto-sent");
     console.log(`  ${ctx.ref} · run ${runId.slice(0, 8)} · ${(run.ms / 1000).toFixed(1)}s → ${run.recommendation} / ${sub?.status} · findings [${codes.join(", ") || "none"}]`);
     for (const e of (run.result?.extractions ?? []) as { file_name: string; document_type: string; type_confidence: number; error?: string }[]) console.log(`    AI read ${e.file_name}: ${e.error ? "ERROR " + e.error : `${e.document_type} ${Math.round(e.type_confidence * 100)}%`}`);
     console.log(`    emails: ${mails.map((m) => `${m.kind}=${m.status}${m.generated_by === "agent" ? "(agent)" : ""}${m.error ? ` [${m.error.slice(0, 60)}]` : ""}`).join(", ")}`);
+    if (extra.length) console.log(`    also flagged (not expected, not a failure): ${extra.join(", ")}`);
     console.log(problems.length ? `  ✗ ${problems.join("; ")}\n` : "  ✓ as expected\n");
+    table.push(`${problems.length ? "✗" : "✓"} #${String(s.n).padStart(2)} ${s.id.padEnd(16)} ${String(run.recommendation).padEnd(8)} ${String(sub?.status).padEnd(16)} ${(run.ms / 1000).toFixed(0).padStart(3)}s  ${codes.join(", ") || "-"}`);
     if (problems.length) failures++;
 
     if (s.id === "incomplete" && s.resubmission && !problems.length) {
@@ -129,7 +142,8 @@ async function main() {
       if (!ok) failures++;
     }
   }
-  console.log(failures ? `${failures} problem(s)` : "All end-to-end cases behaved as expected");
+  console.log("Summary\n" + table.join("\n") + "\n");
+  console.log(failures ? `${failures} problem(s)` : `All ${cases.length} end-to-end cases behaved as expected`);
   process.exit(failures ? 1 : 0);
 }
 

@@ -1,10 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { requireStaff } from "@/lib/auth";
-import { getDashboard } from "@/lib/data";
+import { getDashboard, getMission } from "@/lib/data";
 import { JOURNEY } from "@/lib/vendor-stage";
 import { STAGES } from "@/lib/types";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { CaughtBars, CheckDonut, CountUp, HealthGauge, Pipeline, Scoreboard } from "@/components/mission";
 import { NewVendorButton } from "@/components/new-vendor";
 import { TaskList } from "@/components/tasks";
 import { Avatar, ButtonLink, Chip, Empty, PageHeader, Panel, StatusChip, toneFor } from "@/components/ui";
@@ -30,8 +31,9 @@ const ATTENTION_REASON: Record<string, string> = {
 export default async function Dashboard() {
   const me = await requireStaff();
   const d = await getDashboard(me);
+  const m = await getMission(d.vendors);
   const live = d.vendors.some((v) => v.stage.key === "verifying") || d.runs.some((r) => r.status === "running" || r.status === "queued");
-  const max = Math.max(1, ...d.funnel);
+  const median = d.medianHours == null ? null : d.medianHours < 1 ? `${Math.max(1, Math.round(d.medianHours * 60))}m` : d.medianHours < 48 ? `${d.medianHours.toFixed(1)}h` : `${Math.round(d.medianHours / 24)}d`;
 
   const stats = [
     { label: "Vendors", value: d.counts.total, href: "/vendors" },
@@ -39,7 +41,7 @@ export default async function Dashboard() {
     { label: "Waiting on vendor", value: d.counts.waitingVendor, href: "/vendors?stage=correction" },
     { label: "In review", value: d.counts.inReview, href: "/review", attention: d.counts.inReview > 0 },
     { label: "Approved", value: d.counts.approved, href: "/vendors?stage=approved" },
-    { label: "Median to approval", value: d.medianHours == null ? "-" : d.medianHours < 1 ? `${Math.max(1, Math.round(d.medianHours * 60))}m` : d.medianHours < 48 ? `${d.medianHours.toFixed(1)}h` : `${Math.round(d.medianHours / 24)}d` },
+    { label: "Flags caught · 7d", value: m.flagsCaught, href: "/review", attention: false },
   ];
 
   return (
@@ -62,7 +64,7 @@ export default async function Dashboard() {
           const body = (
             <>
               <div className="text-xs text-muted">{s.label}</div>
-              <div className={`mono mt-1 text-xl ${s.attention ? "text-accent" : ""}`}>{s.value}</div>
+              <CountUp value={s.value} className={`mt-1 block text-[28px] leading-none ${s.attention ? "text-accent" : ""}`} />
             </>
           );
           const cls = "block bg-surface px-4 py-4";
@@ -70,23 +72,27 @@ export default async function Dashboard() {
         })}
       </section>
 
-      <Panel title="Onboarding journey" meta={`${d.counts.total} vendors`} className="mb-6">
-        <div className="grid grid-cols-3 gap-px bg-line sm:grid-cols-6">
-          {JOURNEY.map((label, i) => (
-            <div key={label} className="bg-surface px-4 py-4">
-              <div className="flex items-baseline justify-between">
-                <span className="text-xs text-muted">{label}</span>
-                <span className="mono text-md">{d.funnel[i]}</span>
-              </div>
-              <div className="mt-3 h-1 rounded-full bg-subtle">
-                <div className={`h-1 rounded-full ${i === 4 && d.funnel[i] ? "bg-accent" : i === 5 ? "bg-ok" : "bg-ink"}`} style={{ width: `${(d.funnel[i] / max) * 100}%` }} />
-              </div>
-            </div>
-          ))}
-        </div>
+      <Panel title="Live pipeline" meta={`${d.counts.total} vendors${median ? ` · median ${median} to approval` : ""}`} className="mb-6">
+        <Pipeline stages={JOURNEY.map((label, i) => ({ label, vendors: d.vendors.filter((v) => v.stage.step === i).map((v) => ({ id: v.id, name: v.company_name, tone: v.stage.tone, status: v.stage.label })) }))} />
       </Panel>
 
-      <div className="mb-6 grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      <div className="mb-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,1.3fr)]">
+        <Panel title="Verification health" meta="Last 7 days">
+          <HealthGauge value={m.health} runs={m.runs} />
+        </Panel>
+        <Panel title="Checks run" meta="Last 7 days">
+          <CheckDonut checks={m.checks} />
+        </Panel>
+        <Panel title="What the agent caught" meta={`${m.flagsCaught} flag${m.flagsCaught === 1 ? "" : "s"}`} className="md:col-span-2 lg:col-span-1">
+          <CaughtBars items={m.caught} />
+        </Panel>
+      </div>
+
+      <Panel title="Flags caught this week" meta="Scored on catching problems, never on approvals" className="mb-6">
+        <Scoreboard team={m.team} meId={me.id} />
+      </Panel>
+
+      <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <Panel title="Needs your attention" meta={me.role === "sales" ? "Your vendors" : "Team-wide"}>
           {d.attention.length === 0 ? (
             <Empty title="You're all caught up">Vendors appear here when a link needs sending, a correction is drafted, or a decision is waiting.</Empty>
@@ -113,7 +119,7 @@ export default async function Dashboard() {
         </Panel>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <Panel title="Agent runs" meta="Every verification, stage by stage">
           {d.runs.length === 0 ? (
             <Empty title="No runs yet">A run starts the moment a vendor submits.</Empty>
@@ -147,7 +153,7 @@ export default async function Dashboard() {
           )}
         </Panel>
 
-        <div className="flex flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-6">
           <Panel title="Email activity" meta={<Link href="/emails" className="underline-offset-4 hover:underline">{d.failedEmails ? <span className="text-danger">{d.failedEmails} failed</span> : "All emails"}</Link>}>
             {d.emails.length === 0 ? (
               <Empty title="No emails yet" />
