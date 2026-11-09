@@ -74,7 +74,7 @@ export function DecisionPanel({ vendorId, refCode, legalName, status, recommenda
   const label = { approve: "Approve", request_info: "Request changes", reject: "Reject" };
 
   return (
-    <section className="rounded-[10px] border border-line bg-surface" aria-label="Decision">
+    <section className="glass rounded-[16px]" aria-label="Decision">
       <header className="border-b border-line px-4 py-3">
         <h2 className="font-semibold">Decision</h2>
         <p className="text-sm text-muted">The agent recommends. A person decides.</p>
@@ -89,7 +89,7 @@ export function DecisionPanel({ vendorId, refCode, legalName, status, recommenda
         {actions.length > 1 && (
           <div role="tablist" className="grid grid-cols-3 rounded-md border border-line-strong p-0.5">
             {actions.map((a) => (
-              <button key={a} role="tab" aria-selected={action === a} onClick={() => { setAction(a); setError(null); }} className={`t-colors rounded-[5px] px-2 py-1.5 text-sm font-medium ${action === a ? (a === "reject" ? "bg-danger text-white" : "bg-ink text-white") : "text-ink-2 hover:bg-subtle"}`}>
+              <button key={a} role="tab" aria-selected={action === a} onClick={() => { setAction(a); setError(null); }} className={`t-colors rounded-[5px] px-2 py-1.5 text-sm font-medium ${action === a ? (a === "reject" ? "bg-danger text-white" : "bg-ink text-white") : "text-ink-2 hover:bg-accent-soft/70"}`}>
                 {label[a]}
               </button>
             ))}

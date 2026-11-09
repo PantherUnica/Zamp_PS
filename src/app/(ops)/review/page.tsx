@@ -54,7 +54,7 @@ export default async function Review() {
                 <ul className="divide-y divide-line">
                   {list.map((r) => (
                     <li key={r.id}>
-                      <Link href={`/vendors/${r.vendor.id}`} className="t-colors grid gap-3 px-4 py-3 hover:bg-subtle sm:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)_auto] sm:items-center">
+                      <Link href={`/vendors/${r.vendor.id}`} className="t-colors grid gap-3 px-4 py-3 hover:bg-accent-soft/70 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)_auto] sm:items-center">
                         <span className="flex min-w-0 items-center gap-3">
                           <Avatar text={initials(r.vendor.company_name)} size={28} />
                           <span className="min-w-0">

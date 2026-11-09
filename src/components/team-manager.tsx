@@ -19,7 +19,7 @@ export function TeamManager({ members, meId }: { members: { id: string; email: s
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
-      <div className="overflow-x-auto rounded-[10px] border border-line bg-surface">
+      <div className="overflow-x-auto glass rounded-[16px]">
         <table className="w-full min-w-[560px] text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs text-muted">
@@ -62,7 +62,7 @@ export function TeamManager({ members, meId }: { members: { id: string; email: s
       </div>
 
       <form
-        className="rounded-[10px] border border-line bg-surface p-4"
+        className="glass rounded-[16px] p-4"
         onSubmit={async (e) => {
           e.preventDefault();
           setBusy("add");

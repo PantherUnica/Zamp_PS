@@ -32,7 +32,7 @@ export default async function Calls() {
               </thead>
               <tbody className="divide-y divide-line">
                 {calls.map((c) => (
-                  <tr key={c.id} className="t-colors hover:bg-subtle">
+                  <tr key={c.id} className="t-colors hover:bg-accent-soft/70">
                     <td className="px-4 py-2.5">
                       <Link href={`/calls/${c.id}`} className="font-medium underline-offset-4 hover:underline">{c.title}</Link>
                       <div className="text-xs text-muted">{c.logger?.full_name ?? c.logger?.email}{c.duration_minutes ? ` · ${c.duration_minutes} min` : ""}</div>

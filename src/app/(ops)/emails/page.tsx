@@ -34,7 +34,7 @@ export default async function Emails({ searchParams }: PageProps<"/emails">) {
       )}
       <nav className="mb-4 flex gap-1 overflow-x-auto" aria-label="Filter emails">
         {TABS.map((t) => (
-          <Link key={t.key} href={t.key === "all" ? "/emails" : `/emails?status=${t.key}`} className={`t-colors whitespace-nowrap rounded-md px-3 py-1 text-sm ${tab === t.key ? "bg-ink font-medium text-white" : "text-ink-2 hover:bg-subtle"}`}>{t.label}</Link>
+          <Link key={t.key} href={t.key === "all" ? "/emails" : `/emails?status=${t.key}`} className={`t-colors whitespace-nowrap rounded-md px-3 py-1 text-sm ${tab === t.key ? "bg-ink font-medium text-white" : "text-ink-2 hover:bg-accent-soft/70"}`}>{t.label}</Link>
         ))}
       </nav>
       {actionable.length > 0 && (

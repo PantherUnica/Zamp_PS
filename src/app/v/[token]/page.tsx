@@ -12,7 +12,7 @@ export default async function VendorPage({ params }: PageProps<"/v/[token]">) {
   if (!/^[a-f0-9]{48}$/.test(token)) notFound();
   return (
     <div className="min-h-dvh">
-      <header className="border-b border-line bg-surface">
+      <header className="border-b border-white/70 bg-white/55 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1040px] items-center justify-between px-4 py-3 sm:px-6">
           <Link href="/"><Mark /></Link>
           <span className="flex items-center gap-1.5 text-xs text-muted"><Lock className="size-3.5" /> Private link · do not forward</span>

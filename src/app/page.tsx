@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getStaff } from "@/lib/auth";
 import { LandingBackdrop } from "@/components/landing-backdrop";
 import { CursorFollower, DragRail, Reveal, VendorLinkLine } from "@/components/landing";
+import { GlassScene, HeroCopy } from "@/components/landing-glass";
+import { Mark } from "@/components/app-shell";
 
 const STEPS = [
   { n: "01", title: "Log the call", kicker: "Transcript in", body: "Drop a Zoom, Meet or Teams transcript. The agent pulls out the vendor's details, requirements, objections, risk signals and follow-ups, with coaching for the rep." },
@@ -77,19 +79,31 @@ export default async function Landing() {
     <div className="relative overflow-x-hidden">
       <CursorFollower />
 
-      {/* ───────── Hero: dark, full-bleed, product "reel" */}
-      <section className="relative isolate min-h-[100svh] overflow-hidden bg-ink text-white">
-        <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden><LandingBackdrop tone="dark" /></div>
-        <header className="relative z-10 mx-auto flex max-w-[1440px] items-center justify-between px-5 py-6 sm:px-10 lg:px-[100px] lg:py-10">
-          <Link href="/" className="text-[22px] font-extrabold uppercase tracking-[-0.05em]">Onboard<sup className="text-[11px]">®</sup></Link>
-          <nav className="hidden items-center gap-12 text-[15px] font-semibold uppercase tracking-[-0.01em] md:flex" aria-label="Sections">
-            <a href="#how" className="t-colors hover:text-[#f7cdb4]">How it works</a>
-            <a href="#checks" className="t-colors hover:text-[#f7cdb4]">Verification</a>
-            <a href="#vendors" className="t-colors hover:text-[#f7cdb4]">For vendors</a>
+      {/* ───────── Hero: warm light, frosted glass, after the brand renders */}
+      <section className="relative isolate overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 -z-10 opacity-60" aria-hidden><LandingBackdrop tone="light" /></div>
+        <header className="relative z-10 mx-auto flex max-w-[1440px] items-center justify-between px-5 py-6 sm:px-10 lg:px-[100px] lg:py-8">
+          <Link href="/" className="flex items-center gap-2 text-[22px] font-extrabold uppercase tracking-[-0.05em]"><Mark compact />Onboard<sup className="text-[11px]">®</sup></Link>
+          <nav className="glass hidden items-center gap-1 rounded-full p-1 text-[14px] font-semibold md:flex" aria-label="Sections">
+            {[["#how", "How it works"], ["#checks", "Verification"], ["#vendors", "For vendors"]].map(([h, l]) => (
+              <a key={h} href={h} className="t-colors rounded-full px-4 py-1.5 hover:bg-accent-soft hover:text-accent-hover">{l}</a>
+            ))}
           </nav>
-          <Link href="/login" data-cursor="Sign in" className="t-colors rounded-full border border-white/70 px-5 py-2 text-[13px] font-semibold uppercase hover:bg-white hover:text-ink">Sign in</Link>
+          <Link href="/login" data-cursor="Sign in" className="rounded-full bg-ink px-5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-accent">Sign in</Link>
         </header>
+        <div className="relative z-10 mx-auto grid max-w-[1440px] grid-cols-1 items-center gap-10 px-5 pt-6 pb-20 sm:px-10 lg:grid-cols-[1fr_1.05fr] lg:px-[100px] lg:pt-12 lg:pb-28">
+          <HeroCopy />
+          <GlassScene />
+        </div>
+      </section>
 
+      {/* ───────── The product, live: dark band with the three phone screens */}
+      <section className="relative isolate overflow-hidden bg-ink text-white">
+        <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden><LandingBackdrop tone="dark" /></div>
+        <div className="relative z-10 mx-auto max-w-[1440px] px-5 pt-16 sm:px-10 lg:px-[100px]">
+          <div className="label text-[#fdc9a1]">● The product, live</div>
+          <h2 className="mt-3 max-w-[720px] text-[32px] leading-[1.05] font-bold tracking-[-0.04em] sm:text-[44px]">Vendor fills the form. The agent checks it. <span className="text-gradient">A person signs.</span></h2>
+        </div>
         <div className="relative z-10 mx-auto grid max-w-[1440px] grid-cols-1 items-center gap-8 px-5 pt-4 pb-16 sm:px-10 md:grid-cols-3 lg:px-[100px]">
           {[
             { el: <ScreenForm />, tilt: "-2deg", delay: "0s", cls: "hidden md:block" },
@@ -101,30 +115,11 @@ export default async function Landing() {
               {s.el}
             </div>
           ))}
-          <Link href="/login" data-cursor="Open" className="t-colors absolute top-1/2 left-1/2 hidden size-[150px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[#f2f1ee] text-center text-[17px] leading-tight font-bold uppercase tracking-[-0.03em] text-ink hover:bg-[#f7cdb4] md:grid">
+          <Link href="/login" data-cursor="Open" className="t-colors absolute top-1/2 left-1/2 hidden size-[150px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[#fde1cc] text-center text-[17px] leading-tight font-bold uppercase tracking-[-0.03em] text-ink hover:bg-accent hover:text-white md:grid">
             See it<br />run
           </Link>
         </div>
 
-        <div className="relative z-10 mx-auto max-w-[1440px] px-5 pb-12 sm:px-10 lg:px-[100px]">
-          <div className="flex flex-col gap-6 border-t border-white/25 pt-8 lg:flex-row lg:items-end lg:justify-between"><h1 className="display anim-rise text-[40px] sm:text-[56px] xl:text-[72px]">Every vendor verified<br className="hidden sm:block" /> before the first rupee moves.</h1><p className="anim-rise delay-2 max-w-[340px] text-[17px] leading-[1.45] text-white/75">From the first sales call to an approved supplier. An agent reads and checks; your team decides, with the evidence on screen.</p></div>
-        </div>
-      </section>
-
-      {/* ───────── Proof row */}
-      <section className="mx-auto max-w-[1440px] px-5 py-20 sm:px-10 lg:px-[100px] lg:py-28">
-        <div className="grid gap-12 text-center sm:grid-cols-3">
-          {[
-            ["08", "Verification stages", "on every submission"],
-            ["04", "Evidence sources", "each check labelled"],
-            ["00", "Auto-approvals", "a person always signs"],
-          ].map(([n, a, b], i) => (
-            <Reveal key={n} delay={i * 120}>
-              <div className="display text-[72px] lg:text-[96px]">{n}</div>
-              <div className="label mt-4">{a}<br />{b}</div>
-            </Reveal>
-          ))}
-        </div>
       </section>
 
       {/* ───────── Statement + giant wordmark */}
@@ -173,17 +168,17 @@ export default async function Landing() {
         <h2 className="display mb-14 text-[48px] sm:text-[64px]">What “verified”<br />means here</h2>
         {CHECKS.map((c) => (
           <Reveal key={c.title}>
-            <article className="grid gap-6 border-t border-ink py-6 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:gap-8">
-              <div className={`grid aspect-[16/10] place-items-center overflow-hidden rounded-sm px-6 ${c.tone === "ink" ? "bg-ink text-white" : c.tone === "accent" ? "bg-accent text-white" : "bg-[#e7e5e0] text-ink"}`}>
+            <article className="glass mb-5 grid gap-6 rounded-[22px] p-5 transition-transform duration-200 hover:-translate-y-0.5 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:gap-8 md:p-6">
+              <div className={`grid aspect-[16/10] place-items-center overflow-hidden rounded-[16px] px-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] ${c.tone === "ink" ? "bg-gradient-to-br from-ink to-[#4a3426] text-white" : c.tone === "accent" ? "bg-gradient-to-br from-accent to-amber text-white" : "bg-gradient-to-br from-peach to-amber-soft text-ink"}`}>
                 <span className="mono text-center text-[15px] tracking-tight sm:text-[18px]">{c.sample}</span>
               </div>
               <div className="flex min-h-full flex-col">
                 <div className="flex items-start justify-between gap-6">
                   <h3 className="display text-[32px] sm:text-[48px]">{c.title}</h3>
-                  <svg width="34" height="34" viewBox="0 0 34 34" fill="none" stroke="currentColor" strokeWidth="2.2" className="mt-2 shrink-0" aria-hidden><path d="M4 17h26M20 7l10 10-10 10" /></svg>
+                  <svg width="34" height="34" viewBox="0 0 34 34" fill="none" stroke="currentColor" strokeWidth="2.2" className="mt-2 shrink-0 text-accent" aria-hidden><path d="M4 17h26M20 7l10 10-10 10" /></svg>
                 </div>
                 <p className="mt-6 max-w-[620px] text-[17px] leading-[1.5] text-ink-2">{c.body}</p>
-                <div className="label mt-auto pt-8"><span className="font-bold">{c.tag.split(" · ")[0]}</span> <span className="text-muted">{c.tag.split(" · ")[1]}</span></div>
+                <div className="label mt-auto pt-8"><span className="font-bold text-accent">{c.tag.split(" · ")[0]}</span> <span className="text-muted">{c.tag.split(" · ")[1]}</span></div>
               </div>
             </article>
           </Reveal>
@@ -192,20 +187,20 @@ export default async function Landing() {
 
       {/* ───────── Vendors */}
       <section id="vendors" className="mx-auto max-w-[1440px] scroll-mt-10 px-5 py-28 sm:px-10 lg:px-[100px]">
-        <div className="grid gap-12 border-t border-ink pt-16 lg:grid-cols-2">
+        <div className="glass-strong grid gap-12 rounded-[28px] bg-gradient-to-br from-white/80 to-peach/60 p-8 sm:p-12 lg:grid-cols-2">
           <h2 className="display text-[48px] sm:text-[64px]">Invited as<br />a vendor?</h2>
           <div>
             <p className="max-w-[520px] text-[19px] leading-[1.45] text-ink-2">Open the link from your email, or paste it below. No account, no password. You can save and come back to the same link any time before it expires.</p>
             <div className="mt-10 max-w-[560px]"><VendorLinkLine /></div>
             <ul className="label mt-10 grid gap-2 text-ink-2 sm:grid-cols-2">
-              {["GSTIN and PAN", "Bank account and IFSC", "GST certificate", "PAN card", "Cancelled cheque", "Incorporation certificate"].map((x) => <li key={x} className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-ink" />{x}</li>)}
+              {["GSTIN and PAN", "Bank account and IFSC", "GST certificate", "PAN card", "Cancelled cheque", "Incorporation certificate"].map((x) => <li key={x} className="flex items-center gap-2"><span className="grid size-4 place-items-center rounded bg-ok text-[10px] text-white">✓</span>{x}</li>)}
             </ul>
           </div>
         </div>
       </section>
 
       {/* ───────── Footer */}
-      <footer className="bg-ink text-white">
+      <footer className="bg-gradient-to-br from-ink to-[#3a2a20] text-white">
         <div className="mx-auto max-w-[1440px] px-5 py-24 sm:px-10 lg:px-[100px]">
           <div className="grid gap-12 lg:grid-cols-2">
             <div className="text-[26px] font-extrabold uppercase tracking-[-0.05em]">O/B<sup className="text-[12px]">®</sup></div>

@@ -94,7 +94,7 @@ export function VendorPortal({ token }: { token: string }) {
   }, [token, nonce]);
 
   if (loadError) return <Notice tone="danger" title="This link isn't working">{loadError}</Notice>;
-  if (!view) return <div className="h-64 rounded-[10px] border border-line bg-surface" aria-busy="true" />;
+  if (!view) return <div className="h-64 glass rounded-[16px]" aria-busy="true" />;
 
   return (
     <div className="flex flex-col gap-6">
@@ -126,7 +126,7 @@ function StatusView({ view }: { view: PortalView }) {
     <>
       <Notice tone={tone} title={copy.title}>{copy.body}</Notice>
       {view.status === "processing" && view.run && (
-        <ol className="grid gap-2 rounded-[10px] border border-line bg-surface px-5 py-4 sm:grid-cols-2">
+        <ol className="grid gap-2 glass rounded-[16px] px-5 py-4 sm:grid-cols-2">
           {view.run.stages.filter((s) => s.key !== "communicate").map((s) => {
             const done = ["passed", "warning", "failed"].includes(s.status);
             return (
@@ -297,7 +297,7 @@ function PortalForm({ token, view, onSubmitted }: { token: string; view: PortalV
         <ol className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:gap-0.5">
           {STEPS.map((s, i) => (
             <li key={s.key}>
-              <button onClick={() => setStep(i)} aria-current={step === i ? "step" : undefined} className={`t-colors flex w-full items-center gap-2.5 whitespace-nowrap rounded-md px-2.5 py-2 text-left text-sm ${step === i ? "bg-surface font-medium shadow-[0_0_0_1px_var(--color-line)]" : "text-ink-2 hover:bg-subtle"}`}>
+              <button onClick={() => setStep(i)} aria-current={step === i ? "step" : undefined} className={`t-colors flex w-full items-center gap-2.5 whitespace-nowrap rounded-md px-2.5 py-2 text-left text-sm ${step === i ? "bg-surface font-medium shadow-[0_0_0_1px_var(--color-line)]" : "text-ink-2 hover:bg-accent-soft/70"}`}>
                 <span className={`grid size-5 shrink-0 place-items-center rounded-full border text-[10px] ${stepHasError(i) ? "border-danger text-danger" : progress[i] ? "border-ink bg-ink text-white" : "border-line-strong text-muted"}`}>
                   {stepHasError(i) ? "!" : progress[i] ? <Check className="size-3" /> : i + 1}
                 </span>
@@ -338,7 +338,7 @@ function PortalForm({ token, view, onSubmitted }: { token: string; view: PortalV
           </section>
         )}
 
-        <div key={step} className="anim-fade rounded-[10px] border border-line bg-surface">
+        <div key={step} className="anim-fade glass rounded-[16px]">
           <header className="border-b border-line px-5 py-4 sm:px-6">
             <p className="text-xs text-muted">Step {step + 1} of {STEPS.length}</p>
             <h2 className="mt-0.5 text-md font-semibold">{STEPS[step].label}</h2>
@@ -355,7 +355,7 @@ function PortalForm({ token, view, onSubmitted }: { token: string; view: PortalV
                 <F label="Type of business" error={errors.constitution}>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {CONSTITUTIONS.map((c) => (
-                      <label key={c.value} className={`t-colors flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2.5 text-sm ${form.constitution === c.value ? "border-ink bg-subtle" : "border-line-strong hover:bg-subtle"}`}>
+                      <label key={c.value} className={`t-colors flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2.5 text-sm ${form.constitution === c.value ? "border-ink bg-subtle" : "border-line-strong hover:bg-accent-soft/70"}`}>
                         <input type="radio" name="constitution" checked={form.constitution === c.value} onChange={() => update({ constitution: c.value })} className="accent-[var(--color-accent)]" />
                         {c.label}
                       </label>

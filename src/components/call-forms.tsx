@@ -53,7 +53,7 @@ export function CallUploader({ vendors, defaultVendor }: { vendors: { id: string
 
   return (
     <form onSubmit={submit} className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="rounded-[10px] border border-line bg-surface">
+      <div className="glass rounded-[16px]">
         <div className="flex items-center justify-between border-b border-line px-4 py-3">
           <div role="tablist" className="flex rounded-md border border-line-strong p-0.5 text-sm">
             {(["paste", "file"] as const).map((m) => (
@@ -69,7 +69,7 @@ export function CallUploader({ vendors, defaultVendor }: { vendors: { id: string
           <textarea aria-label="Transcript" value={form.transcript} onChange={(e) => set("transcript", e.target.value)} rows={18} placeholder={"Paste the call transcript here.\n\nSpeaker labels help but are not required."} className="block w-full resize-y rounded-b-[10px] bg-surface px-4 py-3 text-sm leading-6 outline-none placeholder:text-muted" />
         ) : (
           <div className="p-4">
-            <button type="button" onClick={() => fileRef.current?.click()} className="t-colors flex w-full flex-col items-center justify-center gap-2 rounded-md border border-dashed border-line-strong px-4 py-12 text-sm hover:bg-subtle">
+            <button type="button" onClick={() => fileRef.current?.click()} className="t-colors flex w-full flex-col items-center justify-center gap-2 rounded-md border border-dashed border-line-strong px-4 py-12 text-sm hover:bg-accent-soft/70">
               <Upload className="size-5 text-muted" />
               {file ? <span className="mono">{file.name}</span> : <span>Choose a transcript file</span>}
               <span className="text-xs text-muted">.txt, .vtt, .srt (Zoom / Meet / Teams), .docx or .pdf · up to 10 MB</span>
@@ -80,7 +80,7 @@ export function CallUploader({ vendors, defaultVendor }: { vendors: { id: string
       </div>
 
       <div className="flex flex-col gap-4">
-        <div className="rounded-[10px] border border-line bg-surface p-4">
+        <div className="glass rounded-[16px] p-4">
           <div className="grid gap-3">
             <div>
               <label htmlFor="c-title" className="mb-1 block text-sm font-medium">Title</label>

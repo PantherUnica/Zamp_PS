@@ -56,7 +56,7 @@ const DOT: Record<DotTone, string> = {
   ok: "bg-ok",
   attention: "bg-accent",
   danger: "bg-danger",
-  neutral: "bg-ink",
+  neutral: "bg-clay",
   live: "bg-accent anim-pulse ring-4 ring-accent/20",
 };
 
@@ -76,7 +76,7 @@ export function Pipeline({ stages }: { stages: { label: string; vendors: { id: s
               <CountUp value={s.vendors.length} className="text-lg" />
             </div>
             <div className="relative z-[1] mt-[22px] grid size-3 place-items-center rounded-full border border-line-strong bg-surface">
-              <span className={`size-1.5 rounded-full ${s.vendors.length ? "bg-ink" : "bg-line-strong"}`} />
+              <span className={`size-1.5 rounded-full ${s.vendors.length ? "bg-accent" : "bg-line-strong"}`} />
             </div>
             <ul className="mt-4 flex flex-wrap gap-1.5" aria-label={`${s.vendors.length} vendors in ${s.label}`}>
               {s.vendors.slice(0, 18).map((v, i) => (
@@ -187,7 +187,7 @@ export function HealthGauge({ value, runs }: { value: number | null; runs: numbe
 const SEV: Record<string, { bar: string; label: string }> = {
   block: { bar: "bg-danger", label: "Hard stop" },
   review: { bar: "bg-accent", label: "Needs a human" },
-  fixable: { bar: "bg-ink", label: "Vendor can fix" },
+  fixable: { bar: "bg-amber", label: "Vendor can fix" },
 };
 
 export function CaughtBars({ items }: { items: { code: string; title: string; count: number; severity: string }[] }) {
@@ -205,7 +205,7 @@ export function CaughtBars({ items }: { items: { code: string; title: string; co
               <CountUp value={it.count} />
             </span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-subtle">
+          <div className="h-2.5 overflow-hidden rounded-full bg-subtle">
             <div
               className={`h-full rounded-full ${SEV[it.severity]?.bar ?? "bg-ink"} transition-[width] duration-[900ms] ease-[cubic-bezier(0.2,0.7,0.2,1)] motion-reduce:transition-none`}
               style={{ width: on ? `${(it.count / max) * 100}%` : "0%", transitionDelay: `${i * 70}ms` }}
@@ -240,11 +240,11 @@ export function Scoreboard({ team, meId }: { team: Mate[]; meId: string }) {
         <tbody className="divide-y divide-line">
           {team.map((t, i) => (
             <tr key={t.id} className={`anim-flow-in ${t.id === meId ? "bg-accent-soft/60" : ""}`} style={{ animationDelay: `${i * 60}ms` }}>
-              <td className="mono px-4 py-2.5 text-muted">{i === 0 && score(t) > 0 ? <span aria-label="Leading">★</span> : i + 1}</td>
+              <td className="mono px-4 py-2.5 text-muted">{i === 0 && score(t) > 0 ? <span aria-label="Leading" className="text-amber">★</span> : i + 1}</td>
               <td className="py-2.5">
                 <span className="truncate font-medium">{t.name}{t.id === meId ? <span className="text-muted"> (you)</span> : null}</span>
                 <div className="mt-1 h-1 w-full max-w-[160px] overflow-hidden rounded-full bg-subtle">
-                  <div className="h-full rounded-full bg-ink transition-[width] duration-700 ease-out motion-reduce:transition-none" style={{ width: on ? `${(score(t) / top) * 100}%` : "0%", transitionDelay: `${i * 60}ms` }} />
+                  <div className="h-full rounded-full bg-gradient-to-r from-accent to-amber transition-[width] duration-700 ease-out motion-reduce:transition-none" style={{ width: on ? `${(score(t) / top) * 100}%` : "0%", transitionDelay: `${i * 60}ms` }} />
                 </div>
               </td>
               <td className="px-2 py-2.5 text-right"><CountUp value={t.flags} /></td>

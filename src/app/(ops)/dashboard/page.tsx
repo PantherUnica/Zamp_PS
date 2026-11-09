@@ -36,12 +36,12 @@ export default async function Dashboard() {
   const median = d.medianHours == null ? null : d.medianHours < 1 ? `${Math.max(1, Math.round(d.medianHours * 60))}m` : d.medianHours < 48 ? `${d.medianHours.toFixed(1)}h` : `${Math.round(d.medianHours / 24)}d`;
 
   const stats = [
-    { label: "Vendors", value: d.counts.total, href: "/vendors" },
-    { label: "Not submitted", value: d.counts.notSubmitted, href: "/vendors?stage=early" },
-    { label: "Waiting on vendor", value: d.counts.waitingVendor, href: "/vendors?stage=correction" },
-    { label: "In review", value: d.counts.inReview, href: "/review", attention: d.counts.inReview > 0 },
-    { label: "Approved", value: d.counts.approved, href: "/vendors?stage=approved" },
-    { label: "Flags caught · 7d", value: m.flagsCaught, href: "/review", attention: false },
+    { label: "Vendors", value: d.counts.total, href: "/vendors", tint: "from-white/80 to-peach/70", dot: "bg-clay" },
+    { label: "Not submitted", value: d.counts.notSubmitted, href: "/vendors?stage=early", tint: "from-white/80 to-amber-soft", dot: "bg-amber" },
+    { label: "Waiting on vendor", value: d.counts.waitingVendor, href: "/vendors?stage=correction", tint: "from-white/80 to-amber-soft", dot: "bg-amber" },
+    { label: "In review", value: d.counts.inReview, href: "/review", attention: d.counts.inReview > 0, tint: "from-accent-soft to-peach", dot: "bg-accent" },
+    { label: "Approved", value: d.counts.approved, href: "/vendors?stage=approved", tint: "from-white/80 to-sage", dot: "bg-ok" },
+    { label: "Flags caught · 7d", value: m.flagsCaught, href: "/review", attention: false, tint: "from-[#fff7ef] to-accent-line/70", dot: "bg-accent" },
   ];
 
   return (
@@ -59,16 +59,16 @@ export default async function Dashboard() {
         }
       />
 
-      <section aria-label="Totals" className="mb-6 grid grid-cols-2 gap-px overflow-hidden rounded-[10px] border border-line bg-line sm:grid-cols-3 lg:grid-cols-6">
+      <section aria-label="Totals" className="anim-stagger mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {stats.map((s) => {
           const body = (
             <>
-              <div className="text-xs text-muted">{s.label}</div>
+              <div className="flex items-center gap-1.5 text-xs text-ink-2"><span className={`size-1.5 rounded-full ${s.dot}`} />{s.label}</div>
               <CountUp value={s.value} className={`mt-1 block text-[28px] leading-none ${s.attention ? "text-accent" : ""}`} />
             </>
           );
-          const cls = "block bg-surface px-4 py-4";
-          return s.href ? <Link key={s.label} href={s.href} className={`${cls} t-colors hover:bg-subtle`}>{body}</Link> : <div key={s.label} className={cls}>{body}</div>;
+          const cls = `glass block rounded-[14px] bg-gradient-to-br px-4 py-4 ${s.tint}`;
+          return s.href ? <Link key={s.label} href={s.href} className={`${cls} transition-transform duration-150 hover:-translate-y-0.5`}>{body}</Link> : <div key={s.label} className={cls}>{body}</div>;
         })}
       </section>
 
@@ -100,7 +100,7 @@ export default async function Dashboard() {
             <ul className="divide-y divide-line">
               {d.attention.map((v) => (
                 <li key={v.id}>
-                  <Link href={`/vendors/${v.id}`} className="t-colors flex items-center gap-3 px-4 py-3 hover:bg-subtle">
+                  <Link href={`/vendors/${v.id}`} className="t-colors flex items-center gap-3 px-4 py-3 hover:bg-accent-soft/70">
                     <Avatar text={initials(v.company_name)} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium">{v.company_name}</span>
@@ -129,7 +129,7 @@ export default async function Dashboard() {
                 const stages = [...(r.run_stages ?? [])].sort((a, b) => a.position - b.position);
                 return (
                   <li key={r.id}>
-                    <Link href={`/runs/${r.id}`} className="t-colors grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-3 hover:bg-subtle sm:grid-cols-[1fr_auto_auto]">
+                    <Link href={`/runs/${r.id}`} className="t-colors grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-3 hover:bg-accent-soft/70 sm:grid-cols-[1fr_auto_auto]">
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-medium">{r.submissions.legal_name}</span>
                         <span className="mono text-xs text-muted">{r.submissions.ref} · v{r.version} · {r.trigger} · {fmtAge(r.created_at)}</span>
@@ -178,7 +178,7 @@ export default async function Dashboard() {
               <ul className="divide-y divide-line">
                 {d.calls.map((c) => (
                   <li key={c.id}>
-                    <Link href={`/calls/${c.id}`} className="t-colors flex items-center gap-3 px-4 py-2.5 hover:bg-subtle">
+                    <Link href={`/calls/${c.id}`} className="t-colors flex items-center gap-3 px-4 py-2.5 hover:bg-accent-soft/70">
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm">{c.title}</span>
                         <span className="text-xs text-muted">{c.vendors?.company_name ?? "Not linked"} · {fmtAge(c.occurred_at)}</span>

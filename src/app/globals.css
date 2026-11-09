@@ -19,31 +19,41 @@
   --text-xl: 28px;
   --text-xl--line-height: 34px;
 
-  --color-canvas: #f2f1ee;
+  /* v3 "warm glass": beige stone, frosted cards, sunlight from the top right. */
+  --color-canvas: #efe8df;
   --color-surface: #ffffff;
-  --color-subtle: #efeeeb;
-  --color-ink: #252422;
-  --color-ink-2: #44403c;
-  --color-muted: #78716c;
-  --color-line: #e2e0dc;
-  --color-line-strong: #d6d3d1;
+  --color-subtle: #f3ece3;
+  --color-ink: #2a2420;
+  --color-ink-2: #4a413a;
+  --color-muted: #847a70;
+  --color-line: #e6ddd2;
+  --color-line-strong: #d8ccbe;
 
-  --color-accent: #c2410c;
-  --color-accent-hover: #9a3412;
-  --color-accent-soft: #fff4ed;
-  --color-accent-line: #fed7aa;
-  /* "warn" is the same attention role as accent: orange always means "needs a human". */
-  --color-warn: #c2410c;
-  --color-warn-soft: #fff4ed;
+  /* Orange is the brand: primary actions, active states, highlights. */
+  --color-accent: #ea580c;
+  --color-accent-hover: #c2410c;
+  --color-accent-soft: #fff1e6;
+  --color-accent-line: #fdc9a1;
+  --color-warn: #ea580c;
+  --color-warn-soft: #fff1e6;
 
-  --color-ok: #166534;
-  --color-ok-soft: #f0fdf4;
-  --color-danger: #b91c1c;
-  --color-danger-soft: #fef2f2;
-  --color-neutral-soft: #f5f5f4;
+  /* Olive green for success, as in a checked card. */
+  --color-ok: #4d7a35;
+  --color-ok-soft: #eef4e6;
+  --color-danger: #c0362c;
+  --color-danger-soft: #fdecea;
+  --color-neutral-soft: #f5f0ea;
 
-  --radius-panel: 10px;
-  --shadow-overlay: 0 12px 32px rgba(28, 25, 23, 0.1), 0 0 0 1px rgba(28, 25, 23, 0.06);
+  /* Accent tints for stat tiles and charts. */
+  --color-peach: #fde1cc;
+  --color-amber: #f59e0b;
+  --color-amber-soft: #fef1d6;
+  --color-sage: #dfe9d3;
+  --color-clay: #b4532a;
+
+  --radius-panel: 16px;
+  --shadow-overlay: 0 12px 32px rgba(60, 40, 20, 0.12), 0 0 0 1px rgba(60, 40, 20, 0.06);
+  --shadow-glass: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 10px 30px -12px rgba(120, 70, 30, 0.22), 0 2px 6px -2px rgba(120, 70, 30, 0.08);
 }
 
 html {
@@ -52,8 +62,12 @@ html {
 
 body {
   background-color: var(--color-canvas);
-  /* Paper grain (Basic/Dept-style): fine monochrome noise, barely visible. */
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.15 0 0 0 0 0.14 0 0 0 0 0.13 0 0 0 0.09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  /* Warm sunlight from the top right, a faint orange glow bottom left, and fine paper grain. */
+  background-image:
+    radial-gradient(1100px 620px at 88% -8%, rgba(255, 214, 168, 0.55), transparent 62%),
+    radial-gradient(900px 520px at -8% 108%, rgba(234, 88, 12, 0.08), transparent 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.25 0 0 0 0 0.18 0 0 0 0 0.1 0 0 0 0.08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-attachment: fixed;
   color: var(--color-ink);
   font-family: var(--font-sans);
   font-size: var(--text-base);
@@ -133,6 +147,33 @@ body {
 .t-colors { transition: color 120ms ease-out, background-color 120ms ease-out, border-color 120ms ease-out; }
 .t-state { transition: color 160ms ease-out, background-color 160ms ease-out, border-color 160ms ease-out; }
 
+/* Frosted glass card, as in the reference renders: translucent white over the warm canvas. */
+.glass {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: var(--shadow-glass);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+}
+.glass-strong {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.92), rgba(255, 248, 240, 0.7));
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 1px 0 #fff inset, 0 24px 60px -20px rgba(120, 70, 30, 0.35), 0 4px 12px -4px rgba(120, 70, 30, 0.12);
+  backdrop-filter: blur(18px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+}
+/* Warm light pooling under an object (used under the landing glass pieces). */
+.glow-floor {
+  background: radial-gradient(closest-side, rgba(255, 196, 140, 0.55), transparent);
+  filter: blur(8px);
+}
+.text-gradient {
+  background: linear-gradient(100deg, #ea580c 10%, #f59e0b 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 /* Mission control: vendor dots slide into their stage; packets travel the pipeline conveyor. */
 @keyframes flow-in {
   from { opacity: 0; transform: translateX(-28px) scale(0.6); }
@@ -144,6 +185,12 @@ body {
   92% { opacity: 1; }
   100% { left: 100%; opacity: 0; }
 }
+@keyframes pop {
+  0% { opacity: 0; transform: scale(0.3); }
+  70% { opacity: 1; transform: scale(1.15); }
+  100% { opacity: 1; transform: none; }
+}
+.anim-pop { animation: pop 420ms cubic-bezier(0.3, 1.4, 0.5, 1) both; }
 .anim-flow-in { animation: flow-in 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
 .anim-packet { animation: packet 4.8s linear infinite; }
 .anim-stagger > * { animation: rise 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
@@ -154,7 +201,7 @@ body {
 .anim-stagger > *:nth-child(n + 6) { animation-delay: 340ms; }
 
 @media (prefers-reduced-motion: reduce) {
-  .anim-pulse, .anim-reveal, .anim-dialog, .anim-fade, .anim-rise, .anim-float, .anim-flow-in, .anim-stagger > * { animation: none; }
+  .anim-pulse, .anim-reveal, .anim-dialog, .anim-fade, .anim-rise, .anim-float, .anim-flow-in, .anim-pop, .anim-stagger > * { animation: none; }
   .anim-packet { display: none; }
 }
 

@@ -114,7 +114,7 @@ export function ChecksBySource({ checks }: { checks: Check[] }) {
         const failed = counted.filter((c) => c.status !== "pass").length;
         return (
           <details key={s.key} open={failed > 0 || s.key === "external"}>
-            <summary className="t-colors flex items-center justify-between gap-3 px-4 py-3 hover:bg-subtle">
+            <summary className="t-colors flex items-center justify-between gap-3 px-4 py-3 hover:bg-accent-soft/70">
               <span className="font-medium">{s.label}</span>
               <span className="mono text-xs text-muted">{counted.length - failed}/{counted.length} passed{list.length > counted.length ? ` · ${list.length - counted.length} not connected` : ""}</span>
             </summary>

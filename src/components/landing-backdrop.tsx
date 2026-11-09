@@ -59,7 +59,7 @@ export function LandingBackdrop({ tone = "light" }: { tone?: "light" | "dark" })
           const r = 1 + glow * 0.7;
           ctx!.beginPath();
           ctx!.arc(x, y, r, 0, Math.PI * 2);
-          ctx!.fillStyle = tone === "dark" ? `rgba(242,241,238,${alpha * 0.9})` : `rgba(28,25,23,${alpha})`;
+          ctx!.fillStyle = tone === "dark" ? `rgba(242,241,238,${alpha * 0.9})` : `rgba(214,96,30,${alpha * 0.75})`;
           ctx!.fill();
         }
       }

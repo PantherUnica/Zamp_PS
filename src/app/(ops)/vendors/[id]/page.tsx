@@ -209,7 +209,7 @@ export default async function VendorPage({ params, searchParams }: PageProps<"/v
                 <ul className="divide-y divide-line border-t border-line">
                   {c.calls.map((call) => (
                     <li key={call.id}>
-                      <Link href={`/calls/${call.id}`} className="t-colors flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-subtle">
+                      <Link href={`/calls/${call.id}`} className="t-colors flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-accent-soft/70">
                         <span className="min-w-0"><span className="block truncate text-sm">{call.title}</span><span className="text-xs text-muted">{fmtDateTime(call.occurred_at)}</span></span>
                         {call.analysis ? <span className="mono text-sm">{call.analysis.intelligence.score}/10</span> : <StatusChip status={call.status} />}
                       </Link>

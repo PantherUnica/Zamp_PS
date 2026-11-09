@@ -69,7 +69,7 @@ export function InvitePanel(p: { vendorId: string; hasEmail: boolean; url: strin
               <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => confirm("Create a new link? The current link will stop working immediately.") && act("regen", { send: p.hasEmail, regenerate: true })}>
                 {busy === "regen" ? "Working…" : "New link"}
               </Button>
-              <a href={p.url} target="_blank" rel="noreferrer" className="t-colors inline-flex h-8 items-center rounded-md px-3 text-sm text-ink-2 hover:bg-subtle">Open form</a>
+              <a href={p.url} target="_blank" rel="noreferrer" className="t-colors inline-flex h-8 items-center rounded-md px-3 text-sm text-ink-2 hover:bg-accent-soft/70">Open form</a>
             </div>
           )}
         </>

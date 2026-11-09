@@ -33,7 +33,7 @@ export default async function Vendors({ searchParams }: PageProps<"/vendors">) {
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <nav className="flex gap-1 overflow-x-auto" aria-label="Filter by stage">
           {STAGE_FILTERS.map((f) => (
-            <Link key={f.key} href={href({ stage: f.key })} aria-current={stage === f.key ? "page" : undefined} className={`t-colors whitespace-nowrap rounded-md px-3 py-1 text-sm ${stage === f.key ? "bg-ink font-medium text-white" : "text-ink-2 hover:bg-subtle"}`}>
+            <Link key={f.key} href={href({ stage: f.key })} aria-current={stage === f.key ? "page" : undefined} className={`t-colors whitespace-nowrap rounded-md px-3 py-1 text-sm ${stage === f.key ? "bg-ink font-medium text-white" : "text-ink-2 hover:bg-accent-soft/70"}`}>
               {f.label}
             </Link>
           ))}
@@ -71,7 +71,7 @@ export default async function Vendors({ searchParams }: PageProps<"/vendors">) {
               </thead>
               <tbody className="divide-y divide-line">
                 {rows.map((v) => (
-                  <tr key={v.id} className="t-colors group hover:bg-subtle">
+                  <tr key={v.id} className="t-colors group hover:bg-accent-soft/70">
                     <td className="px-4 py-2.5">
                       <Link href={`/vendors/${v.id}`} className="flex items-center gap-3">
                         <Avatar text={initials(v.company_name)} size={28} />

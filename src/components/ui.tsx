@@ -80,15 +80,15 @@ export function SourceTag({ source }: { source: string }) {
 }
 
 const BTN = {
-  primary: "bg-accent text-white border border-accent hover:bg-accent-hover hover:border-accent-hover",
-  dark: "bg-ink text-white border border-ink hover:bg-ink-2",
-  secondary: "bg-transparent text-ink border border-ink/80 hover:bg-ink hover:text-white",
+  primary: "bg-accent text-white border border-accent shadow-[0_6px_18px_-6px_rgba(234,88,12,0.65)] hover:bg-accent-hover hover:border-accent-hover hover:-translate-y-px",
+  dark: "bg-ink text-white border border-ink shadow-[0_6px_16px_-8px_rgba(42,36,32,0.6)] hover:bg-ink-2",
+  secondary: "glass text-ink hover:border-accent-line hover:bg-accent-soft hover:text-accent-hover",
   danger: "bg-surface text-danger border border-line-strong hover:bg-danger-soft",
-  ghost: "text-ink-2 border border-transparent hover:bg-subtle",
+  ghost: "text-ink-2 border border-transparent hover:bg-accent-soft hover:text-accent-hover",
 };
 
 export function buttonClass(variant: keyof typeof BTN = "secondary", size: "md" | "sm" = "md") {
-  return `t-colors inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-semibold uppercase tracking-[0.01em] disabled:cursor-not-allowed disabled:opacity-40 ${size === "md" ? "h-10 px-5 text-[13px]" : "h-8 px-4 text-xs"} ${BTN[variant]}`;
+  return `inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-semibold uppercase tracking-[0.01em] transition-[color,background-color,border-color,transform,box-shadow] duration-150 ease-out disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 ${size === "md" ? "h-10 px-5 text-[13px]" : "h-8 px-4 text-xs"} ${BTN[variant]}`;
 }
 
 export function Button({ variant = "secondary", size = "md", className = "", ...props }: ComponentProps<"button"> & { variant?: keyof typeof BTN; size?: "md" | "sm" }) {
@@ -101,10 +101,10 @@ export function ButtonLink({ variant = "secondary", size = "md", className = "",
 
 export function Panel({ title, meta, children, className = "", bodyClass = "", id }: { title?: ReactNode; meta?: ReactNode; children: ReactNode; className?: string; bodyClass?: string; id?: string }) {
   return (
-    <section id={id} className={`rounded-[10px] border border-line bg-surface ${className}`}>
+    <section id={id} className={`glass rounded-[16px] ${className}`}>
       {title && (
-        <header className="flex min-h-12 items-center justify-between gap-4 border-b border-line px-4 py-3">
-          <h2 className="label flex items-center gap-2"><span className="size-2 rounded-full bg-ink" aria-hidden />{title}</h2>
+        <header className="flex min-h-12 items-center justify-between gap-4 border-b border-line/80 px-4 py-3">
+          <h2 className="label flex items-center gap-2"><span className="size-2 rounded-full bg-accent shadow-[0_0_0_3px_var(--color-accent-soft)]" aria-hidden />{title}</h2>
           {meta && <div className="flex items-center gap-2 text-sm text-muted">{meta}</div>}
         </header>
       )}
@@ -115,9 +115,9 @@ export function Panel({ title, meta, children, className = "", bodyClass = "", i
 
 export function PageHeader({ eyebrow, title, meta, actions }: { eyebrow?: ReactNode; title: ReactNode; meta?: ReactNode; actions?: ReactNode }) {
   return (
-    <div className="mb-8 flex flex-col gap-4 border-b border-ink pb-6 sm:flex-row sm:items-end sm:justify-between">
+    <div className="relative mb-8 flex flex-col gap-4 border-b border-line-strong pb-6 after:absolute after:-bottom-px after:left-0 after:h-[3px] after:w-16 after:rounded-full after:bg-gradient-to-r after:from-accent after:to-amber sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
-        {eyebrow && <div className="label mb-2 text-muted">{eyebrow}</div>}
+        {eyebrow && <div className="label mb-2 text-accent">{eyebrow}</div>}
         <h1 className="display truncate text-[32px] sm:text-[40px]">{title}</h1>
         {meta && <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">{meta}</div>}
       </div>
