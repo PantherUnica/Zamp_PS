@@ -1,22 +1,27 @@
-# Direction: "Ledger, exact"
+# Direction v2: "Quiet instrument, warm signal"
 
-Stage 1 of the UI design pipeline. Handled by the `frontend-design` skill. Confirmed by the user.
+Stage 1 of the UI design pipeline. Handled by the `frontend-design` skill. Direction and references chosen by the user.
 
-**Audience.** Procurement reviewers deciding whether a vendor can be paid; vendors who need to know exactly what to fix; a Zamp interviewer watching the process run live.
-**Purpose.** Make every decision traceable: what was submitted, what the documents say, which rule fired, and who signed.
-**Feeling.** An audit instrument: calm, exact, and trustworthy. Nothing decorative competes with the evidence.
+**Audience.** Salespeople bringing vendors in; procurement reviewers deciding who gets paid; Indian SME vendors filling a KYC-style form on a phone between other work; a Zamp interviewer watching it run.
+**Purpose.** One product that carries a vendor from first call to approved, where every claim ("verified", "matches", "sent") is backed by visible evidence.
+**Feeling.** Calm and expensive. Paper-white surfaces, warm greys, and a single orange that only appears where something needs a human.
 
-## Options considered
-| Direction | Verdict |
-|---|---|
-| **Ledger, exact** (chosen) | Matches Zamp.ai (Geist, near-black neutrals, deep green #003D29). The density suits side-by-side evidence review. |
-| Editorial calm | Lost. Large type and a single focus per screen hide the evidence a reviewer needs on one screen. |
-| Signal red ops | Lost. Off-brand, and red collides with the "rejected / failed" semantics that must stay unambiguous. |
+## References → where each one lives
+| Reference | What we take | Applied to |
+|---|---|---|
+| Zamp.ai | Editorial restraint, Geist, near-monochrome, confident whitespace | Landing page, global identity |
+| Mercury | Trust-first forms: generous fields, quiet progress, reassurance copy | Vendor portal (magic-link form) |
+| Attio | Record pages, crisp tables, activity timelines, property lists | Salesperson dashboard, vendor records, calls |
+| Ramp | Status-dense queues, evidence rows, policy-style reasons | Verification report, review queue, emails |
 
-## The four carrying choices
-1. **Type.** Geist for UI. Geist Mono for anything a machine produced or a human must compare character by character: IDs, tax IDs, IBANs, confidence scores, timestamps, evidence values. Hierarchy comes from weight (400/500/600) before size.
-2. **Colour.** Neutrals do 90% of the work. There is one accent, Zamp green `#003D29`, spent on the primary action, the active nav item, and the "approved" state. Amber and red appear only inside status indicators.
-3. **Density.** Compact product density. Tables and hairline-divided rows, not card grids. Numbers are right-aligned and mono.
-4. **Shape.** 6px radius on controls, 8px on panels. 1px hairlines. No shadows except overlays (dialog). No gradients.
+**Own identity, not a collage:** one type system (Geist with Geist Mono for machine values, plus Instrument Serif used *only* for the landing headline and the vendor welcome) and one accent with one meaning: **orange = needs a human**. Success is a quiet green dot, never orange.
 
-**The test that does not age:** swap the logo and it should still read as an instrument for verifying vendors, because the screens are built around evidence comparison (submitted vs. document vs. rule), not generic KPI cards.
+## Rejected
+- **All-orange brand:** orange on every button stops meaning "attention" and fights the error red.
+- **Dark dashboard:** it looks good in demos but tires reviewers who read evidence for hours, and it drifts from Zamp's paper feel.
+
+## Four carrying choices
+1. **Type.** Geist 400/500/600. Mono for GSTIN, PAN, IFSC, account numbers, refs, scores and timestamps. The serif appears twice in the product.
+2. **Colour.** Warm neutrals (stone) do 95% of the work. Orange `#C2410C` only for: the primary action per screen, "needs a human" statuses, the live/attention indicator, and the email CTA. Green `#166534` for approved/passed dots. Red for rejected/failed.
+3. **Density.** Two registers with a deliberate seam. The staff side is compact (Attio/Ramp rows at 44px). The vendor portal is roomy (Mercury fields at 40px, one section at a time).
+4. **Shape.** 6px controls, 10px panels, 1px warm hairlines, no shadows except overlays, no gradients.

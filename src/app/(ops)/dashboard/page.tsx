@@ -1,80 +1,106 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { requireStaff } from "@/lib/auth";
 import { getDashboard } from "@/lib/data";
+import { JOURNEY } from "@/lib/vendor-stage";
 import { STAGES } from "@/lib/types";
 import { AutoRefresh } from "@/components/auto-refresh";
-import { ButtonLink, Chip, Empty, PageHeader, Panel, RecChip, StatusChip, toneFor } from "@/components/ui";
-import { fmtAge, fmtDateTime, fmtDuration, shortId } from "@/components/format";
+import { NewVendorButton } from "@/components/new-vendor";
+import { TaskList } from "@/components/tasks";
+import { Avatar, ButtonLink, Chip, Empty, PageHeader, Panel, StatusChip, toneFor } from "@/components/ui";
+import { EMAIL_KIND_LABEL, fmtAge, fmtDuration, initials } from "@/components/format";
 
 export const metadata: Metadata = { title: "Overview" };
 
-export default async function Dashboard() {
-  const d = await getDashboard();
-  const live = d.counts.processing > 0 || d.runs.some((r) => r.status === "running" || r.status === "queued");
+function greeting() {
+  const h = Number(new Date().toLocaleString("en-GB", { hour: "2-digit", hour12: false, timeZone: "Asia/Kolkata" }));
+  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+}
 
-  const metrics = [
-    { label: "Total submissions", value: d.counts.total, href: "/cases" },
-    { label: "Pending", value: d.counts.pending, sub: `${d.counts.awaiting_review} review · ${d.counts.awaiting_vendor} vendor`, href: "/cases?status=pending" },
-    { label: "Approved", value: d.counts.approved, href: "/cases?status=approved" },
-    { label: "Rejected", value: d.counts.rejected, href: "/cases?status=rejected" },
-    {
-      label: "Median time to decision",
-      value: d.medianHoursToDecision == null ? "-" : d.medianHoursToDecision < 1 ? `${Math.round(d.medianHoursToDecision * 60)}m` : `${d.medianHoursToDecision.toFixed(1)}h`,
-      sub: "submission → human decision",
-    },
+const ATTENTION_REASON: Record<string, string> = {
+  correction_draft: "Correction email drafted. Review and send",
+  link_ready: "Onboarding link created but not sent",
+  link_expired: "Onboarding link expired. Send a new one",
+  error: "Verification failed to run. Re-run it",
+  ready: "Every check passed. Ready for sign-off",
+  in_review: "Flagged findings need a decision",
+  high_risk: "Hard-stop finding. Confirm rejection",
+};
+
+export default async function Dashboard() {
+  const me = await requireStaff();
+  const d = await getDashboard(me);
+  const live = d.vendors.some((v) => v.stage.key === "verifying") || d.runs.some((r) => r.status === "running" || r.status === "queued");
+  const max = Math.max(1, ...d.funnel);
+
+  const stats = [
+    { label: "Vendors", value: d.counts.total, href: "/vendors" },
+    { label: "Not submitted", value: d.counts.notSubmitted, href: "/vendors?stage=early" },
+    { label: "Waiting on vendor", value: d.counts.waitingVendor, href: "/vendors?stage=correction" },
+    { label: "In review", value: d.counts.inReview, href: "/review", attention: d.counts.inReview > 0 },
+    { label: "Approved", value: d.counts.approved, href: "/vendors?stage=approved" },
+    { label: "Median to approval", value: d.medianHours == null ? "-" : d.medianHours < 1 ? `${Math.max(1, Math.round(d.medianHours * 60))}m` : d.medianHours < 48 ? `${d.medianHours.toFixed(1)}h` : `${Math.round(d.medianHours / 24)}d` },
   ];
 
   return (
     <>
       <AutoRefresh active={live} />
       <PageHeader
-        eyebrow="Operations"
-        title="Vendor onboarding"
-        meta={
-          live ? (
-            <Chip tone="live">{d.counts.processing} processing now</Chip>
-          ) : (
-            <span>All runs idle</span>
-          )
+        eyebrow={new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Kolkata" })}
+        title={`${greeting()}, ${me.name.split(" ")[0]}`}
+        meta={live ? <Chip tone="live">Agent is verifying a submission</Chip> : <span>{d.attention.length ? `${d.attention.length} item${d.attention.length > 1 ? "s" : ""} need you` : "Nothing needs you right now"}</span>}
+        actions={
+          <>
+            <ButtonLink href="/calls/new">Log a call</ButtonLink>
+            <NewVendorButton myEmail={me.email} />
+          </>
         }
-        actions={<ButtonLink href="/onboard" variant="primary">New submission</ButtonLink>}
       />
 
-      <section aria-label="Totals" className="mb-8 grid grid-cols-2 overflow-hidden rounded-lg border border-line bg-surface md:grid-cols-5">
-        {metrics.map((m, i) => {
+      <section aria-label="Totals" className="mb-6 grid grid-cols-2 gap-px overflow-hidden rounded-[10px] border border-line bg-line sm:grid-cols-3 lg:grid-cols-6">
+        {stats.map((s) => {
           const body = (
             <>
-              <div className="text-xs text-muted">{m.label}</div>
-              <div className="mono mt-1 text-xl font-medium">{m.value}</div>
-              {m.sub && <div className="mt-1 text-xs text-muted">{m.sub}</div>}
+              <div className="text-xs text-muted">{s.label}</div>
+              <div className={`mono mt-1 text-xl ${s.attention ? "text-accent" : ""}`}>{s.value}</div>
             </>
           );
-          const cls = `block px-4 py-4 ${i > 0 ? "md:border-l" : ""} ${i % 2 === 1 ? "border-l" : ""} ${i >= 2 ? "border-t md:border-t-0" : ""} border-line`;
-          return m.href ? (
-            <Link key={m.label} href={m.href} className={`${cls} t-colors hover:bg-canvas`}>{body}</Link>
-          ) : (
-            <div key={m.label} className={cls}>{body}</div>
-          );
+          const cls = "block bg-surface px-4 py-4";
+          return s.href ? <Link key={s.label} href={s.href} className={`${cls} t-colors hover:bg-subtle`}>{body}</Link> : <div key={s.label} className={cls}>{body}</div>;
         })}
       </section>
 
-      <div className="mb-8 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <Panel title="Review queue" meta={`${d.queue.length} waiting for a human decision`}>
-          {d.queue.length === 0 ? (
-            <Empty title="Nothing to review">Cases land here when the rules recommend a decision or need judgment.</Empty>
+      <Panel title="Onboarding journey" meta={`${d.counts.total} vendors`} className="mb-6">
+        <div className="grid grid-cols-3 gap-px bg-line sm:grid-cols-6">
+          {JOURNEY.map((label, i) => (
+            <div key={label} className="bg-surface px-4 py-4">
+              <div className="flex items-baseline justify-between">
+                <span className="text-xs text-muted">{label}</span>
+                <span className="mono text-md">{d.funnel[i]}</span>
+              </div>
+              <div className="mt-3 h-1 rounded-full bg-subtle">
+                <div className={`h-1 rounded-full ${i === 4 && d.funnel[i] ? "bg-accent" : i === 5 ? "bg-ok" : "bg-ink"}`} style={{ width: `${(d.funnel[i] / max) * 100}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </Panel>
+
+      <div className="mb-6 grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <Panel title="Needs your attention" meta={me.role === "sales" ? "Your vendors" : "Team-wide"}>
+          {d.attention.length === 0 ? (
+            <Empty title="You're all caught up">Vendors appear here when a link needs sending, a correction is drafted, or a decision is waiting.</Empty>
           ) : (
             <ul className="divide-y divide-line">
-              {d.queue.map((s) => (
-                <li key={s.id}>
-                  <Link href={`/cases/${s.id}`} className="t-colors grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-3 hover:bg-canvas sm:grid-cols-[88px_1fr_auto_72px]">
-                    <span className="mono hidden text-sm text-muted sm:block">{s.ref}</span>
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium">{s.legal_name}</span>
-                      <span className="text-xs text-muted sm:hidden">{s.ref} · {s.country}</span>
-                      <span className="hidden text-xs text-muted sm:block">{s.country} · version {s.current_version}</span>
+              {d.attention.map((v) => (
+                <li key={v.id}>
+                  <Link href={`/vendors/${v.id}`} className="t-colors flex items-center gap-3 px-4 py-3 hover:bg-subtle">
+                    <Avatar text={initials(v.company_name)} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">{v.company_name}</span>
+                      <span className="block truncate text-xs text-muted">{ATTENTION_REASON[v.stage.key] ?? v.stage.label}</span>
                     </span>
-                    <span className="flex justify-end">{s.status === "error" ? <StatusChip status="error" /> : <RecChip rec={s.recommendation} />}</span>
-                    <span className="mono hidden text-right text-sm text-muted sm:block">{fmtAge(s.updated_at)}</span>
+                    <Chip tone={v.stage.tone}>{v.stage.label}</Chip>
                   </Link>
                 </li>
               ))}
@@ -82,81 +108,84 @@ export default async function Dashboard() {
           )}
         </Panel>
 
-        <Panel title="Waiting on vendor" meta={d.waiting.length || undefined}>
-          {d.waiting.length === 0 ? (
-            <Empty title="No open requests">Vendors asked to fix something appear here with how long they have been waiting.</Empty>
-          ) : (
-            <ul className="divide-y divide-line">
-              {d.waiting.map((s) => (
-                <li key={s.id}>
-                  <Link href={`/cases/${s.id}`} className="t-colors flex items-center justify-between gap-3 px-4 py-3 hover:bg-canvas">
-                    <span className="min-w-0">
-                      <span className="block truncate">{s.legal_name}</span>
-                      <span className="mono text-xs text-muted">{s.ref}</span>
-                    </span>
-                    <span className="mono text-sm text-muted">{fmtAge(s.updated_at)}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
+        <Panel title="Follow-ups" meta={d.tasks.length ? `${d.tasks.length} open` : undefined}>
+          <TaskList showVendor tasks={d.tasks.map((t) => ({ ...t, vendor: t.vendor_id && t.vendors ? { id: t.vendor_id, name: t.vendors.company_name } : null }))} />
         </Panel>
       </div>
 
-      <Panel title="Recent processing runs" meta="Every run, stage by stage">
-        {d.runs.length === 0 ? (
-          <Empty title="No runs yet">Submit a vendor to start the first run.</Empty>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-sm">
-              <thead>
-                <tr className="border-b border-line text-left text-xs text-muted">
-                  <th className="px-4 py-2 font-normal">Run</th>
-                  <th className="px-4 py-2 font-normal">Vendor</th>
-                  <th className="px-4 py-2 font-normal">Trigger</th>
-                  <th className="px-4 py-2 font-normal">Stages</th>
-                  <th className="px-4 py-2 font-normal">Outcome</th>
-                  <th className="px-4 py-2 text-right font-normal">Duration</th>
-                  <th className="px-4 py-2 text-right font-normal">Started</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {d.runs.map((r) => {
-                  const stages = [...(r.run_stages ?? [])].sort((a, b) => a.position - b.position);
-                  return (
-                    <tr key={r.id} className="t-colors hover:bg-canvas">
-                      <td className="px-4 py-3">
-                        <Link href={`/runs/${r.id}`} className="mono text-ink underline-offset-4 hover:underline">{shortId(r.id)}</Link>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="max-w-[220px] truncate">{r.submissions?.legal_name}</div>
-                        <div className="mono text-xs text-muted">{r.submissions?.ref} · v{r.version}</div>
-                      </td>
-                      <td className="px-4 py-3 capitalize text-ink-2">{r.trigger}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-1" aria-label="Stage statuses">
-                          {STAGES.map((s) => {
-                            const st = stages.find((x) => x.key === s.key)?.status ?? "pending";
-                            const tone = toneFor(st);
-                            const color = { accent: "bg-accent", warn: "bg-warn", danger: "bg-danger", live: "bg-ink anim-pulse", neutral: "bg-line-strong" }[tone];
-                            return <span key={s.key} title={`${s.label}: ${st}`} className={`h-3 w-2 rounded-[2px] ${color}`} />;
-                          })}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {r.status === "completed" ? <RecChip rec={r.recommendation} /> : <StatusChip status={r.status} />}
-                        {r.error && <div className="mt-1 max-w-[240px] truncate text-xs text-danger" title={r.error}>{r.error}</div>}
-                      </td>
-                      <td className="mono px-4 py-3 text-right text-ink-2">{fmtDuration(r.started_at, r.finished_at)}</td>
-                      <td className="mono px-4 py-3 text-right text-muted">{fmtDateTime(r.created_at)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Panel>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <Panel title="Agent runs" meta="Every verification, stage by stage">
+          {d.runs.length === 0 ? (
+            <Empty title="No runs yet">A run starts the moment a vendor submits.</Empty>
+          ) : (
+            <ul className="divide-y divide-line">
+              {d.runs.map((r) => {
+                const stages = [...(r.run_stages ?? [])].sort((a, b) => a.position - b.position);
+                return (
+                  <li key={r.id}>
+                    <Link href={`/runs/${r.id}`} className="t-colors grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-3 hover:bg-subtle sm:grid-cols-[1fr_auto_auto]">
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium">{r.submissions.legal_name}</span>
+                        <span className="mono text-xs text-muted">{r.submissions.ref} · v{r.version} · {r.trigger} · {fmtAge(r.created_at)}</span>
+                      </span>
+                      <span className="hidden gap-0.5 sm:flex" aria-label="Stage statuses">
+                        {STAGES.map((s) => {
+                          const st = stages.find((x) => x.key === s.key)?.status ?? "pending";
+                          const color = { ok: "bg-ok", attention: "bg-accent", danger: "bg-danger", live: "bg-accent anim-pulse", neutral: "bg-line-strong" }[toneFor(st)];
+                          return <span key={s.key} title={`${s.label}: ${st}`} className={`h-3.5 w-1.5 rounded-[2px] ${color}`} />;
+                        })}
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <span className="mono hidden text-xs text-muted sm:inline">{fmtDuration(r.started_at, r.finished_at)}</span>
+                        {r.status === "completed" ? <Chip tone={r.recommendation === "approve" ? "ok" : r.recommendation === "reject" ? "danger" : "attention"}>{r.recommendation === "approve" ? "All passed" : r.recommendation === "reject" ? "Hard stop" : "Flagged"}</Chip> : <StatusChip status={r.status} />}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Panel>
+
+        <div className="flex flex-col gap-6">
+          <Panel title="Email activity" meta={<Link href="/emails" className="underline-offset-4 hover:underline">{d.failedEmails ? <span className="text-danger">{d.failedEmails} failed</span> : "All emails"}</Link>}>
+            {d.emails.length === 0 ? (
+              <Empty title="No emails yet" />
+            ) : (
+              <ul className="divide-y divide-line">
+                {d.emails.slice(0, 6).map((e) => (
+                  <li key={e.id} className="flex items-center gap-3 px-4 py-2.5">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm">{EMAIL_KIND_LABEL[e.kind]} <span className="text-muted">→ {e.to_email}</span></span>
+                      <span className="text-xs text-muted">{e.generated_by === "agent" ? "Agent-written · " : ""}{fmtAge(e.sent_at ?? e.created_at)}</span>
+                    </span>
+                    <StatusChip status={e.status} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+          <Panel title="Recent calls" meta={<Link href="/calls" className="underline-offset-4 hover:underline">All calls</Link>}>
+            {d.calls.length === 0 ? (
+              <Empty title="No calls logged" action={<ButtonLink href="/calls/new" size="sm">Log a call</ButtonLink>} />
+            ) : (
+              <ul className="divide-y divide-line">
+                {d.calls.map((c) => (
+                  <li key={c.id}>
+                    <Link href={`/calls/${c.id}`} className="t-colors flex items-center gap-3 px-4 py-2.5 hover:bg-subtle">
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm">{c.title}</span>
+                        <span className="text-xs text-muted">{c.vendors?.company_name ?? "Not linked"} · {fmtAge(c.occurred_at)}</span>
+                      </span>
+                      {c.analysis ? <span className="mono text-sm">{c.analysis.intelligence.score}<span className="text-muted">/10</span></span> : <StatusChip status={c.status} />}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+        </div>
+      </div>
     </>
   );
 }

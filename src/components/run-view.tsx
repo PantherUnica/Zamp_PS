@@ -3,8 +3,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Check, Extraction, Finding } from "@/lib/types";
 import { STAGES } from "@/lib/types";
-import { Alert, Check as CheckIcon, Cross, Rule, Spark } from "./icons";
-import { ButtonLink, Chip, PageHeader, Panel, RecChip, StatusChip } from "./ui";
+import { DOCS } from "@/lib/india";
+import { Alert, Check as CheckIcon, Cross, Globe, Minus, Rule, Spark } from "./icons";
+import { ButtonLink, Chip, PageHeader, Panel, SourceTag, StatusChip } from "./ui";
 import { REC_LABEL, fmtDateTime, fmtDuration, pct, shortId } from "./format";
 
 export interface StageRow {
@@ -21,7 +22,7 @@ export interface StageRow {
     reasons?: string[];
     counts?: Record<string, number>;
     route?: string;
-    request?: { message: string } | null;
+    email?: { status: string; subject?: string; body?: string; error?: string | null; auto?: boolean; generated_by?: string } | null;
   } | null;
   error: string | null;
   started_at: string | null;
@@ -29,45 +30,25 @@ export interface StageRow {
 }
 
 export interface RunPayload {
-  run: {
-    id: string;
-    status: string;
-    trigger: string;
-    version: number;
-    recommendation: string | null;
-    error: string | null;
-    model: string | null;
-    created_at: string;
-    started_at: string | null;
-    finished_at: string | null;
-    result: { summary?: string; route?: string } | null;
-  };
+  run: { id: string; status: string; trigger: string; version: number; recommendation: string | null; error: string | null; model: string | null; created_at: string; started_at: string | null; finished_at: string | null; result: { summary?: string; route?: string } | null };
   stages: StageRow[];
-  submission: { id: string; ref: string; legal_name: string; country: string; status: string } | null;
+  submission: { id: string; ref: string; legal_name: string; status: string; vendor_id: string | null } | null;
 }
 
 const SEVERITY: Record<string, { label: string; cls: string }> = {
   block: { label: "Hard stop", cls: "text-danger" },
-  review: { label: "Needs review", cls: "text-warn" },
-  fixable: { label: "Vendor can fix", cls: "text-warn" },
+  review: { label: "Needs judgment", cls: "text-accent" },
+  fixable: { label: "Vendor can fix", cls: "text-accent" },
   info: { label: "Note", cls: "text-muted" },
 };
 
 const FIELD_LABEL: Record<string, string> = {
-  legal_name: "Legal name",
-  tax_id: "Tax ID",
-  registration_number: "Registration no.",
-  country: "Country",
-  address: "Address",
-  account_holder: "Account holder",
-  account_number: "Account no.",
-  iban: "IBAN",
-  ifsc: "IFSC",
-  routing_number: "Routing no.",
-  bank_name: "Bank",
-  issue_date: "Issued",
-  expiry_date: "Expires",
+  legal_name: "Legal name", trade_name: "Trade name", gstin: "GSTIN", pan: "PAN", cin: "CIN", llpin: "LLPIN", udyam: "Udyam", address: "Address", state: "State",
+  account_holder: "Account holder", account_number: "Account no.", ifsc: "IFSC", bank_name: "Bank", issue_date: "Issued", expiry_date: "Expires",
 };
+
+const KIND_ICON = { ai: Spark, rules: Rule, external: Globe };
+const KIND_LABEL = { ai: "AI", rules: "Rules", external: "External" };
 
 export function RunView({ initial }: { initial: RunPayload }) {
   const [data, setData] = useState(initial);
@@ -77,7 +58,7 @@ export function RunView({ initial }: { initial: RunPayload }) {
   useEffect(() => {
     if (done) return;
     let stop = false;
-    const tick = async () => {
+    const t = setInterval(async () => {
       try {
         const res = await fetch(`/api/runs/${initial.run.id}`, { cache: "no-store" });
         if (!res.ok) throw new Error((await res.json()).error ?? res.statusText);
@@ -88,8 +69,7 @@ export function RunView({ initial }: { initial: RunPayload }) {
       } catch (e) {
         if (!stop) setPollError(e instanceof Error ? e.message : "Connection problem");
       }
-    };
-    const t = setInterval(tick, 1000);
+    }, 1000);
     return () => {
       stop = true;
       clearInterval(t);
@@ -100,32 +80,31 @@ export function RunView({ initial }: { initial: RunPayload }) {
   const current = stages.find((s) => s.status === "running");
   const decide = stages.find((s) => s.key === "decide")?.output;
   const comm = stages.find((s) => s.key === "communicate")?.output;
+  const vendorHref = submission?.vendor_id ? `/vendors/${submission.vendor_id}` : null;
 
   return (
     <>
       <PageHeader
         eyebrow={<span className="mono">Run {shortId(run.id)}</span>}
-        title={submission?.legal_name ?? "Processing run"}
+        title={submission?.legal_name ?? "Verification run"}
         meta={
           <>
-            {submission && <Link href={`/cases/${submission.id}`} className="mono underline-offset-4 hover:underline">{submission.ref}</Link>}
+            {submission && <span className="mono">{submission.ref}</span>}
             <span className="capitalize">{run.trigger} · version {run.version}</span>
             <span>Started <span className="mono">{fmtDateTime(run.started_at ?? run.created_at)}</span></span>
             <span>Duration <span className="mono">{fmtDuration(run.started_at, run.finished_at)}</span></span>
-            {run.model && <span>Extraction model <span className="mono">{run.model}</span></span>}
+            {run.model && <span>Reader <span className="mono">{run.model}</span></span>}
           </>
         }
-        actions={submission && <ButtonLink href={`/cases/${submission.id}`}>Open case</ButtonLink>}
+        actions={vendorHref && <ButtonLink href={vendorHref}>Open vendor</ButtonLink>}
       />
 
-      {pollError && <div className="mb-4 rounded-md border border-line bg-warn-soft px-4 py-2 text-sm text-warn">Live updates paused: {pollError}. Retrying…</div>}
+      {pollError && <div className="mb-4 rounded-md bg-accent-soft px-4 py-2 text-sm text-accent">Live updates paused: {pollError}. Retrying…</div>}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
         <Panel title="Stages" meta={done ? <StatusChip status={run.status} /> : <Chip tone="live">{current ? current.label : "Queued"}</Chip>}>
           <ol className="px-4 py-2">
-            {stages.map((s, i) => (
-              <StageItem key={s.key} stage={s} last={i === stages.length - 1} />
-            ))}
+            {stages.map((s, i) => <StageItem key={s.key} stage={s} last={i === stages.length - 1} />)}
           </ol>
         </Panel>
 
@@ -134,48 +113,49 @@ export function RunView({ initial }: { initial: RunPayload }) {
             <div className="px-4 py-4">
               {run.status === "failed" ? (
                 <>
-                  <div className="text-md font-semibold text-danger">Processing failed</div>
+                  <div className="font-semibold text-danger">Verification failed</div>
                   <p className="mt-2 text-sm text-ink-2">{run.error}</p>
-                  <p className="mt-2 text-sm text-muted">No decision was made. Re-run processing from the case.</p>
+                  <p className="mt-2 text-sm text-muted">No decision was made. Re-run it from the vendor page.</p>
                 </>
               ) : !done ? (
                 <>
-                  <div className="text-sm text-muted">Stage {Math.max(1, stages.filter((s) => !["pending", "running"].includes(s.status)).length + 1)} of {stages.length}</div>
+                  <div className="text-xs text-muted">Stage {Math.min(stages.length, stages.filter((s) => !["pending", "running"].includes(s.status)).length + 1)} of {stages.length}</div>
                   <div className="mt-1 font-medium">{current?.label ?? "Waiting to start"}</div>
-                  <p className="mt-3 text-sm text-muted">The recommendation is produced by deterministic rules once every stage has run. AI only reads the documents.</p>
+                  <p className="mt-3 text-sm text-muted">AI only reads documents. The outcome comes from deterministic rules, and only a person can approve.</p>
                 </>
               ) : (
                 <div className="anim-reveal">
                   <div className="text-xs text-muted">Rule-based recommendation</div>
-                  <div className={`mt-1 text-xl font-semibold ${run.recommendation === "approve" ? "text-accent" : run.recommendation === "reject" ? "text-danger" : "text-warn"}`}>
-                    {REC_LABEL[run.recommendation ?? ""] ?? "-"}
-                  </div>
+                  <div className={`mt-1 text-lg font-semibold ${run.recommendation === "reject" ? "text-danger" : run.recommendation === "approve" ? "text-ink" : "text-accent"}`}>{REC_LABEL[run.recommendation ?? ""] ?? "-"}</div>
                   <p className="mt-2 text-sm text-ink-2">{run.result?.summary}</p>
                   {decide?.counts && (
                     <dl className="mt-4 grid grid-cols-4 overflow-hidden rounded-md border border-line text-center">
                       {(["block", "review", "fixable", "info"] as const).map((k, i) => (
                         <div key={k} className={`px-1 py-2 ${i ? "border-l border-line" : ""}`}>
-                          <dt className="text-[11px] text-muted">{SEVERITY[k].label}</dt>
+                          <dt className="text-[10px] text-muted">{SEVERITY[k].label}</dt>
                           <dd className="mono text-md">{decide.counts?.[k] ?? 0}</dd>
                         </div>
                       ))}
                     </dl>
                   )}
-                  <div className="mt-4 text-sm">
-                    {comm?.route === "awaiting_vendor" ? "Information request sent to the vendor." : "Routed to the review queue. A human makes the final decision."}
+                  <div className="mt-4 text-sm text-ink-2">
+                    {comm?.route === "awaiting_vendor"
+                      ? comm.email?.auto
+                        ? comm.email.status === "sent" ? "Missing-document request emailed to the vendor automatically." : "The request email failed. Retry it from Emails."
+                        : "A correction email is drafted for the salesperson to review and send."
+                      : "Routed to the review queue for a human decision."}
                   </div>
-                  {submission && (
-                    <ButtonLink href={`/cases/${submission.id}`} variant="primary" className="mt-4 w-full">
-                      {comm?.route === "awaiting_vendor" ? "View case" : "Review and decide"}
-                    </ButtonLink>
-                  )}
+                  {vendorHref && <ButtonLink href={vendorHref} variant="primary" className="mt-4 w-full">{comm?.route === "awaiting_vendor" ? "Open vendor" : "Review and decide"}</ButtonLink>}
                 </div>
               )}
             </div>
           </Panel>
-          <p className="px-1 text-xs text-muted">
-            <Spark className="mr-1 inline size-3 align-[-1px]" />AI stage · <Rule className="mx-1 inline size-3 align-[-1px]" />deterministic rules. Status is never set by AI.
-          </p>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 px-1 text-xs text-muted">
+            <span className="inline-flex items-center gap-1"><Spark className="size-3" /> AI reads</span>
+            <span className="inline-flex items-center gap-1"><Rule className="size-3" /> Rules decide</span>
+            <span className="inline-flex items-center gap-1"><Globe className="size-3" /> External record</span>
+          </div>
+          {!done && <Link href="/dashboard" className="px-1 text-xs text-muted underline-offset-4 hover:underline">You can leave this page. The run continues on the server.</Link>}
         </div>
       </div>
     </>
@@ -185,22 +165,25 @@ export function RunView({ initial }: { initial: RunPayload }) {
 function StageIcon({ status }: { status: string }) {
   const ring = "t-state grid size-6 shrink-0 place-items-center rounded-full border";
   switch (status) {
-    case "passed":
-      return <span className={`${ring} border-accent bg-accent text-white`}><CheckIcon className="size-3.5" /></span>;
-    case "warning":
-      return <span className={`${ring} border-warn bg-warn-soft text-warn`}><Alert className="size-3.5" /></span>;
+    case "passed": return <span className={`${ring} border-ink bg-ink text-white`}><CheckIcon className="size-3.5" /></span>;
+    case "warning": return <span className={`${ring} border-accent bg-accent-soft text-accent`}><Alert className="size-3.5" /></span>;
     case "failed":
-    case "error":
-      return <span className={`${ring} border-danger bg-danger-soft text-danger`}><Cross className="size-3.5" /></span>;
-    case "running":
-      return <span className={`${ring} border-ink`}><span className="anim-pulse size-2 rounded-full bg-ink" /></span>;
-    default:
-      return <span className={`${ring} border-line-strong bg-surface`} />;
+    case "error": return <span className={`${ring} border-danger bg-danger-soft text-danger`}><Cross className="size-3.5" /></span>;
+    case "running": return <span className={`${ring} border-accent`}><span className="anim-pulse size-2 rounded-full bg-accent" /></span>;
+    default: return <span className={`${ring} border-line-strong bg-surface`} />;
   }
+}
+
+function CheckIconFor({ status }: { status: Check["status"] }) {
+  if (status === "pass") return <CheckIcon className="size-3.5 text-ok" />;
+  if (status === "fail") return <Cross className="size-3.5 text-danger" />;
+  if (status === "warn") return <Alert className="size-3.5 text-accent" />;
+  return <Minus className="size-3.5 text-muted" />;
 }
 
 function StageItem({ stage, last }: { stage: StageRow; last: boolean }) {
   const def = STAGES.find((s) => s.key === stage.key);
+  const Icon = KIND_ICON[def?.kind ?? "rules"];
   const o = stage.output;
   const findings = (o?.findings ?? []).filter((f) => f.stage === stage.key || stage.key === "decide");
   const hasBody = stage.status !== "pending" && (o || stage.error);
@@ -212,10 +195,7 @@ function StageItem({ stage, last }: { stage: StageRow; last: boolean }) {
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <div className="flex items-center gap-2">
             <span className={`font-medium ${stage.status === "pending" ? "text-muted" : ""}`}>{stage.label}</span>
-            <span className="inline-flex items-center gap-1 text-xs text-muted">
-              {def?.kind === "ai" ? <Spark className="size-3" /> : <Rule className="size-3" />}
-              {def?.kind === "ai" ? "AI" : "Rules"}
-            </span>
+            <span className="inline-flex items-center gap-1 text-xs text-muted"><Icon className="size-3" />{KIND_LABEL[def?.kind ?? "rules"]}</span>
           </div>
           <span className="mono text-xs text-muted">
             {stage.summary ?? (stage.status === "running" ? "running" : stage.status === "pending" ? "" : stage.status)}
@@ -231,9 +211,7 @@ function StageItem({ stage, last }: { stage: StageRow; last: boolean }) {
               <ul className="divide-y divide-line rounded-md border border-line">
                 {o.checks.map((c) => (
                   <li key={c.id} className="flex gap-3 px-3 py-2 text-sm">
-                    <span className={`mt-[3px] ${c.status === "pass" ? "text-accent" : c.status === "fail" ? "text-danger" : "text-warn"}`}>
-                      {c.status === "pass" ? <CheckIcon className="size-3.5" /> : c.status === "fail" ? <Cross className="size-3.5" /> : <Alert className="size-3.5" />}
-                    </span>
+                    <span className="mt-[3px]"><CheckIconFor status={c.status} /></span>
                     <div className="min-w-0 flex-1">
                       <div className="font-medium">{c.label}</div>
                       <div className="text-ink-2">{c.detail}</div>
@@ -248,6 +226,7 @@ function StageItem({ stage, last }: { stage: StageRow; last: boolean }) {
                         </dl>
                       )}
                     </div>
+                    {c.source && <span className="shrink-0"><SourceTag source={c.status === "skip" && c.id.startsWith("registry") ? "not_connected" : c.source} /></span>}
                   </li>
                 ))}
               </ul>
@@ -264,16 +243,19 @@ function StageItem({ stage, last }: { stage: StageRow; last: boolean }) {
             )}
             {stage.key === "decide" && o?.recommendation && (
               <div className="rounded-md border border-line px-3 py-2 text-sm">
-                <div className="flex items-center gap-2"><RecChip rec={o.recommendation} /><span className="text-ink-2">{o.checks?.[0]?.detail}</span></div>
-                <ul className="mt-2 list-disc space-y-0.5 pl-5 text-ink-2">
-                  {o.reasons?.map((r) => <li key={r}>{r}</li>)}
-                </ul>
+                <div className="text-ink-2">{o.checks?.[0]?.detail}</div>
+                <ul className="mt-2 list-disc space-y-0.5 pl-5 text-ink-2">{o.reasons?.map((r) => <li key={r}>{r}</li>)}</ul>
               </div>
             )}
-            {stage.key === "communicate" && o?.request?.message && (
+            {stage.key === "communicate" && o?.email?.body && (
               <details className="rounded-md border border-line">
-                <summary className="px-3 py-2 text-sm font-medium">Message sent to vendor</summary>
-                <pre className="whitespace-pre-wrap border-t border-line px-3 py-2 font-sans text-sm text-ink-2">{o.request.message}</pre>
+                <summary className="px-3 py-2 text-sm font-medium">
+                  {o.email.auto ? "Email sent to vendor" : "Draft email for the salesperson"}{o.email.generated_by === "agent" ? " · written by the agent" : ""}
+                </summary>
+                <div className="border-t border-line px-3 py-2">
+                  <div className="text-sm font-medium">{o.email.subject}</div>
+                  <pre className="mt-2 whitespace-pre-wrap font-sans text-sm text-ink-2">{o.email.body}</pre>
+                </div>
               </details>
             )}
           </div>
@@ -288,17 +270,8 @@ function ExtractionBlock({ e }: { e: Extraction }) {
   return (
     <div className="rounded-md border border-line">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-3 py-2 text-sm">
-        <span className="mono truncate">{e.file_name}</span>
-        <span className="flex items-center gap-2 text-xs text-muted">
-          {e.error ? (
-            <span className="text-danger">Extraction failed</span>
-          ) : (
-            <>
-              <span>{e.document_type.replace(/_/g, " ")} · <span className="mono">{pct(e.type_confidence)}</span></span>
-              <span>· {e.readability.replace("_", " ")}</span>
-            </>
-          )}
-        </span>
+        <span className="min-w-0"><span className="font-medium">{DOCS[e.slot]?.label}</span> <span className="mono text-xs text-muted">{e.file_name}</span></span>
+        <span className="text-xs text-muted">{e.error ? <span className="text-danger">Extraction failed</span> : <>{e.document_type.replace(/_/g, " ")} · <span className="mono">{pct(e.type_confidence)}</span> · {e.readability.replace("_", " ")}</>}</span>
       </div>
       {e.error ? (
         <div className="px-3 py-2 text-sm text-danger">{e.error}</div>
@@ -307,13 +280,11 @@ function ExtractionBlock({ e }: { e: Extraction }) {
           <tbody className="divide-y divide-line">
             {fields.map(([k, v]) => (
               <tr key={k}>
-                <td className="w-[128px] px-3 py-1.5 text-xs text-muted">{FIELD_LABEL[k] ?? k}</td>
+                <td className="w-[120px] px-3 py-1.5 text-xs text-muted">{FIELD_LABEL[k] ?? k}</td>
                 <td className="mono break-all px-3 py-1.5 text-xs">{v.value}</td>
-                <td className="w-[112px] px-3 py-1.5">
+                <td className="w-[108px] px-3 py-1.5">
                   <div className="flex items-center gap-2">
-                    <div className="h-1 flex-1 rounded-full bg-neutral-soft">
-                      <div className={`h-1 rounded-full ${v.confidence >= 0.75 ? "bg-accent" : "bg-warn"}`} style={{ width: pct(v.confidence) }} />
-                    </div>
+                    <div className="h-1 flex-1 rounded-full bg-subtle"><div className={`h-1 rounded-full ${v.confidence >= 0.75 ? "bg-ink" : "bg-accent"}`} style={{ width: pct(v.confidence) }} /></div>
                     <span className="mono w-9 text-right text-xs text-muted">{pct(v.confidence)}</span>
                   </div>
                 </td>
@@ -322,11 +293,7 @@ function ExtractionBlock({ e }: { e: Extraction }) {
           </tbody>
         </table>
       )}
-      {e.embedded_instructions.detected && (
-        <div className="border-t border-line bg-danger-soft px-3 py-2 text-sm text-danger">
-          Embedded instructions detected and ignored: <span className="mono">“{e.embedded_instructions.text}”</span>
-        </div>
-      )}
+      {e.embedded_instructions.detected && <div className="border-t border-line bg-danger-soft px-3 py-2 text-sm text-danger">Embedded instructions detected and ignored: <span className="mono">“{e.embedded_instructions.text}”</span></div>}
       {e.notes && <div className="border-t border-line px-3 py-2 text-xs text-muted">{e.notes}</div>}
     </div>
   );

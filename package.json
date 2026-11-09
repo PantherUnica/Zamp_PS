@@ -10,21 +10,26 @@
     "typecheck": "tsc --noEmit",
     "db:migrate": "tsx scripts/migrate.ts",
     "samples": "tsx scripts/make-samples.ts",
-    "test:rules": "tsx scripts/test-rules.ts"
+    "test:rules": "tsx scripts/test-rules.ts",
+    "test:e2e": "tsx scripts/e2e.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.119.0",
+    "mammoth": "^1.13.0",
     "next": "16.4.5",
+    "nodemailer": "^10.4.0",
     "openai": "^7.53.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "server-only": "^0.0.1",
+    "unpdf": "^2.1.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
+    "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",

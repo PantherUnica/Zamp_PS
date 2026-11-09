@@ -1,327 +1,179 @@
-// Generates realistic test documents for the demo cases into public/samples/.
-// Usage: npm run samples   (re-run before a demo so bank letters stay within the 90-day window)
-import { mkdirSync, writeFileSync } from "node:fs";
+// Generates realistic Indian vendor documents for the demo cases into public/samples/.
+// Usage: npm run samples   (re-run before a demo to keep dates current)
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
-import { deVatCheckDigit, gbVatValid, gstinChecksum, ibanCheckDigits } from "../src/lib/rules/validators";
+import { degrees, PDFDocument, rgb, StandardFonts, type PDFFont } from "pdf-lib";
+import { SAMPLE_CASES } from "../src/lib/samples";
+import { stateName } from "../src/lib/india";
 
 const OUT = join(process.cwd(), "public", "samples");
-const today = new Date();
-const daysAgo = (n: number) => new Date(today.getTime() - n * 86_400_000).toISOString().slice(0, 10);
+const ink = rgb(0.1, 0.1, 0.1);
+const grey = rgb(0.42, 0.42, 0.42);
+const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
 
-// ---- identifiers with real check digits
-const gstin = (first14: string) => first14 + gstinChecksum(first14);
-const deVat = (first8: string) => `DE${first8}${deVatCheckDigit(first8)}`;
-function gbVat(seven: string) {
-  for (let c = 0; c < 100; c++) {
-    const nine = seven + String(c).padStart(2, "0");
-    if (gbVatValid(nine)) return `GB${nine}`;
-  }
-  throw new Error("no GB VAT");
-}
-const iban = (cc: string, bban: string) => `${cc}${ibanCheckDigits(cc, bban)}${bban}`;
-const fmtIban = (v: string) => v.replace(/(.{4})/g, "$1 ").trim();
-
-export const IDS = {
-  northwindGstin: gstin("29AABCN1234F1Z"),
-  kestrelEin: "46-3829175",
-  brightlineVat: deVat("81472593"),
-  brightlineIban: iban("DE", "370400440532013000"),
-  albionVatOnCert: gbVat("9807806"),
-  albionIban: iban("GB", "BARC20000055779911"),
-};
-
-// ---- tiny layout engine
-interface Line {
-  k: string;
-  v: string;
-}
-interface DocSpec {
-  file: string;
-  issuer: string;
-  issuerSub: string;
-  title: string;
-  ref?: string;
-  date: string;
-  intro?: string;
-  rows: Line[];
-  body?: string[];
-  signer: string;
-  hidden?: string;
+async function newDoc(size: [number, number] = [595, 842]) {
+  const pdf = await PDFDocument.create();
+  const page = pdf.addPage(size);
+  const fonts = { reg: await pdf.embedFont(StandardFonts.Helvetica), bold: await pdf.embedFont(StandardFonts.HelveticaBold) };
+  return { pdf, page, fonts };
 }
 
 function wrap(text: string, font: PDFFont, size: number, width: number) {
-  const words = text.split(" ");
-  const lines: string[] = [];
+  const out: string[] = [];
   let cur = "";
-  for (const w of words) {
+  for (const w of text.split(" ")) {
     const t = cur ? `${cur} ${w}` : w;
     if (font.widthOfTextAtSize(t, size) > width) {
-      lines.push(cur);
+      out.push(cur);
       cur = w;
     } else cur = t;
   }
-  if (cur) lines.push(cur);
-  return lines;
+  if (cur) out.push(cur);
+  return out;
 }
 
-async function render(dir: string, spec: DocSpec) {
-  const pdf = await PDFDocument.create();
-  const page: PDFPage = pdf.addPage([595, 842]);
-  const reg = await pdf.embedFont(StandardFonts.Helvetica);
-  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const ink = rgb(0.1, 0.1, 0.1);
-  const grey = rgb(0.42, 0.42, 0.42);
+async function save(pdf: PDFDocument, dir: string, file: string, title: string) {
+  pdf.setTitle(title);
+  mkdirSync(join(OUT, dir), { recursive: true });
+  writeFileSync(join(OUT, dir, file), await pdf.save());
+  console.log(`  ${dir}/${file}`);
+}
+
+/** Certificate-style A4 document. */
+async function certificate(dir: string, file: string, spec: { issuer: string; sub: string; title: string; ref?: string; date: string; intro?: string; rows: [string, string][]; signer: string }) {
+  const { pdf, page, fonts } = await newDoc();
   let y = 790;
-  page.drawText(spec.issuer, { x: 56, y, size: 15, font: bold, color: ink });
+  page.drawText(spec.issuer, { x: 56, y, size: 15, font: fonts.bold, color: ink });
   y -= 16;
-  page.drawText(spec.issuerSub, { x: 56, y, size: 9, font: reg, color: grey });
+  page.drawText(spec.sub, { x: 56, y, size: 9, font: fonts.reg, color: grey });
   y -= 14;
   page.drawLine({ start: { x: 56, y }, end: { x: 539, y }, thickness: 0.8, color: grey });
   y -= 36;
-  page.drawText(spec.title, { x: 56, y, size: 13, font: bold, color: ink });
+  page.drawText(spec.title, { x: 56, y, size: 13, font: fonts.bold, color: ink });
   y -= 18;
-  page.drawText(`${spec.ref ? `Reference: ${spec.ref}    ` : ""}Date of issue: ${spec.date}`, { x: 56, y, size: 9, font: reg, color: grey });
+  page.drawText(`${spec.ref ? `Reference: ${spec.ref}    ` : ""}Date of issue: ${spec.date}`, { x: 56, y, size: 9, font: fonts.reg, color: grey });
   y -= 28;
   if (spec.intro) {
-    for (const l of wrap(spec.intro, reg, 10, 483)) {
-      page.drawText(l, { x: 56, y, size: 10, font: reg, color: ink });
+    for (const l of wrap(spec.intro, fonts.reg, 10, 483)) {
+      page.drawText(l, { x: 56, y, size: 10, font: fonts.reg, color: ink });
       y -= 15;
     }
     y -= 10;
   }
-  for (const r of spec.rows) {
-    page.drawText(r.k, { x: 56, y, size: 9.5, font: reg, color: grey });
-    const vl = wrap(r.v, bold, 10, 300);
-    vl.forEach((l, i) => page.drawText(l, { x: 230, y: y - i * 14, size: 10, font: bold, color: ink }));
+  for (const [k, v] of spec.rows) {
+    page.drawText(k, { x: 56, y, size: 9.5, font: fonts.reg, color: grey });
+    const vl = wrap(v, fonts.bold, 10, 300);
+    vl.forEach((l, i) => page.drawText(l, { x: 230, y: y - i * 14, size: 10, font: fonts.bold, color: ink }));
     y -= 14 * vl.length + 9;
   }
-  y -= 12;
-  for (const para of spec.body ?? []) {
-    for (const l of wrap(para, reg, 10, 483)) {
-      page.drawText(l, { x: 56, y, size: 10, font: reg, color: ink });
-      y -= 15;
-    }
-    y -= 8;
-  }
-  y -= 30;
-  page.drawText(spec.signer, { x: 56, y, size: 10, font: bold, color: ink });
-  page.drawText("This is a system generated document.", { x: 56, y: 60, size: 8, font: reg, color: grey });
-  if (spec.hidden) page.drawText(spec.hidden, { x: 56, y: 40, size: 3, font: reg, color: rgb(1, 1, 1) });
-  pdf.setTitle(spec.title);
-  mkdirSync(join(OUT, dir), { recursive: true });
-  writeFileSync(join(OUT, dir, spec.file), await pdf.save());
-  console.log(`  ${dir}/${spec.file}`);
+  y -= 40;
+  page.drawText(spec.signer, { x: 56, y, size: 10, font: fonts.bold, color: ink });
+  page.drawText("This is a system generated document.", { x: 56, y: 60, size: 8, font: fonts.reg, color: grey });
+  await save(pdf, dir, file, spec.title);
 }
 
-async function main() {
-  console.log("Generating sample documents:");
+/** e-PAN card layout. */
+async function panCard(dir: string, o: { name: string; pan: string; incorporated: string }) {
+  const { pdf, page, fonts } = await newDoc([420, 270]);
+  page.drawRectangle({ x: 10, y: 10, width: 400, height: 250, borderColor: rgb(0.55, 0.55, 0.6), borderWidth: 1, color: rgb(0.95, 0.96, 0.98) });
+  page.drawText("INCOME TAX DEPARTMENT", { x: 24, y: 232, size: 11, font: fonts.bold, color: ink });
+  page.drawText("GOVT. OF INDIA", { x: 300, y: 232, size: 11, font: fonts.bold, color: ink });
+  page.drawText("Permanent Account Number Card", { x: 24, y: 210, size: 9, font: fonts.reg, color: grey });
+  page.drawText(o.pan, { x: 24, y: 178, size: 20, font: fonts.bold, color: ink });
+  page.drawText("Name", { x: 24, y: 146, size: 8, font: fonts.reg, color: grey });
+  page.drawText(o.name.toUpperCase(), { x: 24, y: 132, size: 11, font: fonts.bold, color: ink });
+  page.drawText("Date of Incorporation / Formation", { x: 24, y: 104, size: 8, font: fonts.reg, color: grey });
+  page.drawText(o.incorporated, { x: 24, y: 90, size: 11, font: fonts.bold, color: ink });
+  page.drawText("e-PAN · This is an electronically generated PAN card.", { x: 24, y: 30, size: 7, font: fonts.reg, color: grey });
+  await save(pdf, dir, "pan_card.pdf", "e-PAN card");
+}
 
-  // 1. Happy path: Northwind Components Pvt Ltd (India)
-  const nw = "northwind";
-  await render(nw, {
-    file: "gst_certificate.pdf",
+/** Cancelled cheque: holder name printed above the signature, CANCELLED across the face. */
+async function cheque(dir: string, o: { bank: string; branch: string; ifsc: string; holder: string; account: string; micr: string }) {
+  const { pdf, page, fonts } = await newDoc([600, 280]);
+  page.drawRectangle({ x: 8, y: 8, width: 584, height: 264, borderColor: rgb(0.6, 0.65, 0.7), borderWidth: 1, color: rgb(0.96, 0.98, 0.99) });
+  page.drawText(o.bank, { x: 24, y: 244, size: 14, font: fonts.bold, color: ink });
+  page.drawText(`${o.branch}  ·  IFSC: ${o.ifsc}`, { x: 24, y: 228, size: 8.5, font: fonts.reg, color: grey });
+  page.drawText("Date  _ _ / _ _ / _ _ _ _", { x: 430, y: 244, size: 9, font: fonts.reg, color: grey });
+  page.drawText("Pay ______________________________________________  or Bearer", { x: 24, y: 196, size: 10, font: fonts.reg, color: grey });
+  page.drawText("Rupees ______________________________________________", { x: 24, y: 170, size: 10, font: fonts.reg, color: grey });
+  page.drawText("A/c No.", { x: 24, y: 134, size: 9, font: fonts.reg, color: grey });
+  page.drawText(o.account, { x: 70, y: 134, size: 12, font: fonts.bold, color: ink });
+  page.drawText("Current Account", { x: 24, y: 118, size: 8, font: fonts.reg, color: grey });
+  page.drawText(`For ${o.holder.toUpperCase()}`, { x: 330, y: 104, size: 9.5, font: fonts.bold, color: ink });
+  page.drawText("Authorised Signatory", { x: 400, y: 70, size: 8, font: fonts.reg, color: grey });
+  page.drawText(`" 000101"  ${o.micr}:  ${o.account.slice(-6)}"  29`, { x: 120, y: 26, size: 11, font: fonts.reg, color: ink });
+  page.drawText("CANCELLED", { x: 150, y: 120, size: 54, font: fonts.bold, color: rgb(0.75, 0.15, 0.12), rotate: degrees(14), opacity: 0.55 });
+  await save(pdf, dir, "cancelled_cheque.pdf", "Cancelled cheque");
+}
+
+function gstCert(dir: string, o: { gstin: string; legal: string; trade?: string; constitution: string; address: string; state: string; liability: string }) {
+  return certificate(dir, "gst_certificate.pdf", {
     issuer: "Government of India",
-    issuerSub: "Goods and Services Tax Network · Form GST REG-06",
+    sub: "Goods and Services Tax Network · Form GST REG-06 · [See Rule 10(1)]",
     title: "Registration Certificate",
-    ref: "REG-06/KA/2019/448812",
-    date: "2019-05-10",
+    ref: `REG-06/${o.gstin.slice(0, 2)}/${o.liability.slice(0, 4)}`,
+    date: o.liability,
     rows: [
-      { k: "Registration Number (GSTIN)", v: IDS.northwindGstin },
-      { k: "Legal Name", v: "Northwind Components Private Limited" },
-      { k: "Trade Name", v: "Northwind Components" },
-      { k: "Constitution of Business", v: "Private Limited Company" },
-      { k: "Address of Principal Place", v: "21 Residency Road, Bengaluru, Karnataka 560025, India" },
-      { k: "Date of Liability", v: "2019-04-01" },
-      { k: "Type of Registration", v: "Regular" },
-      { k: "Country", v: "India" },
+      ["Registration Number (GSTIN)", o.gstin],
+      ["Legal Name", o.legal],
+      ["Trade Name, if any", o.trade || "-"],
+      ["Constitution of Business", o.constitution],
+      ["Address of Principal Place of Business", o.address],
+      ["State", o.state],
+      ["Date of Liability", o.liability],
+      ["Type of Registration", "Regular"],
     ],
-    signer: "Approving Authority, Central Tax, Bengaluru",
+    signer: "Approving Authority, Central Tax",
   });
-  await render(nw, {
-    file: "bank_letter.pdf",
-    issuer: "HDFC Bank Limited",
-    issuerSub: "Residency Road Branch · Bengaluru 560025 · IFSC HDFC0001234",
-    title: "Bank Account Confirmation Letter",
-    ref: "HDFC/RR/BAC/77231",
-    date: daysAgo(6),
-    intro: "To whom it may concern. This is to confirm that the following current account is maintained with our branch and is active as on the date of this letter.",
-    rows: [
-      { k: "Account Holder", v: "Northwind Components Private Limited" },
-      { k: "Account Number", v: "50200012345678" },
-      { k: "Account Type", v: "Current Account" },
-      { k: "IFSC", v: "HDFC0001234" },
-      { k: "Branch", v: "Residency Road, Bengaluru" },
-      { k: "Country", v: "India" },
-    ],
-    signer: "Branch Manager, HDFC Bank Ltd.",
-  });
-  await render(nw, {
-    file: "incorporation_certificate.pdf",
-    issuer: "Ministry of Corporate Affairs",
-    issuerSub: "Registrar of Companies, Karnataka · Government of India",
-    title: "Certificate of Incorporation",
-    date: "2019-03-14",
-    intro: "I hereby certify that NORTHWIND COMPONENTS PRIVATE LIMITED is incorporated on this fourteenth day of March two thousand nineteen under the Companies Act, 2013, and that the company is limited by shares.",
-    rows: [
-      { k: "Company Name", v: "Northwind Components Private Limited" },
-      { k: "Corporate Identity Number", v: "U29100KA2019PTC123456" },
-      { k: "PAN", v: "AABCN1234F" },
-      { k: "Registered Office", v: "21 Residency Road, Bengaluru, Karnataka 560025" },
-      { k: "Country", v: "India" },
-    ],
-    signer: "Registrar of Companies, Karnataka",
-  });
+}
 
-  // 2. Edge case: incomplete submission. Kestrel Fasteners Inc (US); bank letter withheld for resubmission.
-  const ks = "kestrel";
-  await render(ks, {
-    file: "ein_confirmation.pdf",
-    issuer: "Internal Revenue Service",
-    issuerSub: "Department of the Treasury · Cincinnati, OH 45999 · Notice CP 575 A",
-    title: "We assigned you an Employer Identification Number (EIN)",
-    date: "2021-08-23",
-    intro: "Thank you for applying for an Employer Identification Number (EIN). We assigned you the EIN shown below. This EIN will identify you, your business accounts, tax returns, and documents.",
-    rows: [
-      { k: "Employer Identification Number", v: IDS.kestrelEin },
-      { k: "Legal Name", v: "Kestrel Fasteners Inc." },
-      { k: "Address", v: "1800 Industrial Parkway, Columbus, OH 43215" },
-      { k: "Form", v: "SS-4" },
-      { k: "Country", v: "United States" },
-    ],
-    signer: "Internal Revenue Service",
-  });
-  await render(ks, {
-    file: "certificate_of_incorporation.pdf",
-    issuer: "State of Ohio · Secretary of State",
-    issuerSub: "Business Services Division · Columbus, Ohio",
-    title: "Certificate of Incorporation",
-    date: "2021-08-02",
-    intro: "It is hereby certified that the Secretary of State of Ohio has custody of the business records for the corporation named below, and that it was duly incorporated on the date shown.",
-    rows: [
-      { k: "Entity Name", v: "Kestrel Fasteners Inc." },
-      { k: "Charter / Entity Number", v: "4783291" },
-      { k: "Entity Type", v: "For-Profit Corporation" },
-      { k: "Principal Office", v: "1800 Industrial Parkway, Columbus, OH 43215" },
-      { k: "Country", v: "United States" },
-    ],
-    signer: "Secretary of State, Ohio",
-  });
-  await render(ks, {
-    file: "bank_letter.pdf",
-    issuer: "JPMorgan Chase Bank, N.A.",
-    issuerSub: "Commercial Banking · Columbus, OH",
-    title: "Bank Account Verification Letter",
-    date: daysAgo(3),
-    intro: "At the request of our client, we confirm the following deposit account is open and in good standing with JPMorgan Chase Bank, N.A.",
-    rows: [
-      { k: "Account Holder", v: "Kestrel Fasteners Inc." },
-      { k: "Account Number", v: "483920175" },
-      { k: "ABA Routing Number", v: "021000021" },
-      { k: "Account Type", v: "Business Checking" },
-      { k: "Country", v: "United States" },
-    ],
-    signer: "Relationship Manager, Chase Commercial Banking",
-  });
+const CONS = { private_limited: "Private Limited Company", llp: "Limited Liability Partnership" } as Record<string, string>;
+const MICR: Record<string, string> = { HDFC0000075: "560240005", ICIC0000039: "411229003", UTIB0000003: "380211002", HDFC0000004: "600240002" };
+const BANK: Record<string, { bank: string; branch: string }> = {
+  HDFC0000075: { bank: "HDFC BANK LTD.", branch: "Airport Road, Bangalore" },
+  ICIC0000039: { bank: "ICICI BANK LTD.", branch: "Pune" },
+  UTIB0000003: { bank: "AXIS BANK LTD.", branch: "Ahmedabad" },
+  HDFC0000004: { bank: "HDFC BANK LTD.", branch: "ITC Centre, Anna Salai, Chennai" },
+};
 
-  // 3. Edge case: bank name mismatch. Brightline Packaging GmbH (DE); account belongs to a different entity.
-  const bl = "brightline";
-  await render(bl, {
-    file: "ust_idnr_bestaetigung.pdf",
-    issuer: "Bundeszentralamt für Steuern",
-    issuerSub: "An der Küppe 1 · 53225 Bonn · Federal Central Tax Office",
-    title: "Confirmation of VAT Identification Number (USt-IdNr.)",
-    date: "2022-02-11",
-    rows: [
-      { k: "USt-IdNr. (VAT ID)", v: IDS.brightlineVat },
-      { k: "Company Name", v: "Brightline Packaging GmbH" },
-      { k: "Address", v: "Hansaring 42, 50670 Köln" },
-      { k: "Country", v: "Germany" },
-    ],
-    signer: "Bundeszentralamt für Steuern",
-  });
-  await render(bl, {
-    file: "bank_confirmation.pdf",
-    issuer: "Commerzbank AG",
-    issuerSub: "Filiale Köln · BIC COBADEFFXXX",
-    title: "Bank Account Confirmation (Kontobestätigung)",
-    date: daysAgo(12),
-    intro: "We hereby confirm that the following business account is held with Commerzbank AG.",
-    rows: [
-      { k: "Account Holder", v: "Brightline Logistik GmbH" },
-      { k: "IBAN", v: fmtIban(IDS.brightlineIban) },
-      { k: "BIC", v: "COBADEFFXXX" },
-      { k: "Country", v: "Germany" },
-    ],
-    signer: "Commerzbank AG, Firmenkunden",
-  });
-  await render(bl, {
-    file: "handelsregister_auszug.pdf",
-    issuer: "Amtsgericht Köln",
-    issuerSub: "Handelsregister Abteilung B",
-    title: "Commercial Register Extract (Handelsregisterauszug)",
-    date: "2022-01-20",
-    rows: [
-      { k: "Registration Number", v: "HRB 98765" },
-      { k: "Company Name (Firma)", v: "Brightline Packaging GmbH" },
-      { k: "Registered Office", v: "Köln" },
-      { k: "Business Address", v: "Hansaring 42, 50670 Köln" },
-      { k: "Legal Form", v: "Gesellschaft mit beschränkter Haftung" },
-      { k: "Country", v: "Germany" },
-    ],
-    signer: "Registergericht Köln",
-  });
-
-  // 4. Edge case: invalid / inconsistent tax info. Albion Precision Ltd (GB) enters an Indian-format tax ID.
-  const al = "albion";
-  await render(al, {
-    file: "vat_certificate.pdf",
-    issuer: "HM Revenue & Customs",
-    issuerSub: "VAT Registration Service · BX9 1WR",
-    title: "Certificate of Registration for Value Added Tax (VAT4)",
-    date: "2020-06-30",
-    rows: [
-      { k: "VAT Registration Number", v: `${IDS.albionVatOnCert.slice(0, 5)} ${IDS.albionVatOnCert.slice(5, 9)} ${IDS.albionVatOnCert.slice(9)}` },
-      { k: "Name", v: "Albion Precision Ltd" },
-      { k: "Address", v: "Unit 4, Kingsway Business Park, Sheffield S9 1AB" },
-      { k: "Effective Date of Registration", v: "2020-07-01" },
-      { k: "Country", v: "United Kingdom" },
-    ],
-    signer: "HM Revenue & Customs",
-  });
-  await render(al, {
-    file: "bank_letter.pdf",
-    issuer: "Barclays Bank UK PLC",
-    issuerSub: "Business Banking · Sheffield",
-    title: "Confirmation of Account Details",
-    date: daysAgo(9),
-    rows: [
-      { k: "Account Name", v: "Albion Precision Ltd" },
-      { k: "IBAN", v: fmtIban(IDS.albionIban) },
-      { k: "Sort Code", v: "20-00-00" },
-      { k: "Account Number", v: "55779911" },
-      { k: "Country", v: "United Kingdom" },
-    ],
-    signer: "Barclays Business Banking",
-  });
-  await render(al, {
-    file: "certificate_of_incorporation.pdf",
-    issuer: "Companies House",
-    issuerSub: "Registrar of Companies for England and Wales",
-    title: "Certificate of Incorporation of a Private Limited Company",
-    date: "2018-09-04",
-    intro: "The Registrar of Companies for England and Wales hereby certifies that ALBION PRECISION LTD is this day incorporated under the Companies Act 2006 as a private company, that the company is limited by shares, and the situation of its registered office is in England/Wales.",
-    rows: [
-      { k: "Company Name", v: "Albion Precision Ltd" },
-      { k: "Company Number", v: "11548327" },
-      { k: "Registered Office", v: "Unit 4, Kingsway Business Park, Sheffield S9 1AB" },
-      { k: "Country", v: "United Kingdom" },
-    ],
-    signer: "Registrar of Companies",
-  });
-
-  writeFileSync(join(OUT, "ids.json"), JSON.stringify(IDS, null, 2));
-  console.log("IDs:", IDS);
+async function main() {
+  rmSync(OUT, { recursive: true, force: true });
+  console.log("Generating sample documents:");
+  for (const s of SAMPLE_CASES) {
+    const d = s.data;
+    const dir = s.files[0].url.split("/")[2];
+    const address = `${d.address_line}, ${d.city}, ${stateName(d.state)} ${d.pincode}`;
+    // Edge 3: the real GST certificate carries Albion's own Tamil Nadu GSTIN, not the one typed on the form.
+    const certGstin = s.id === "tax-invalid" ? "33AABCA9876M1Z5" : d.gstin;
+    await gstCert(dir, { gstin: certGstin, legal: d.legal_name.replace(/Pvt Ltd$/, "Private Limited"), trade: d.trade_name, constitution: CONS[d.constitution], address, state: stateName(d.state), liability: "2021-07-01" });
+    await panCard(dir, { name: d.legal_name.replace(/Pvt Ltd$/, "Private Limited"), pan: d.pan, incorporated: "14/03/2019" });
+    // Edge 2: the cheque is drawn on an account held by a different company.
+    const holder = s.id === "bank-mismatch" ? "Brightline Logistics Pvt Ltd" : d.bank.account_holder;
+    await cheque(dir, { ...BANK[d.bank.ifsc], ifsc: d.bank.ifsc, holder, account: d.bank.account_number, micr: MICR[d.bank.ifsc] });
+    if (d.constitution === "llp") {
+      await certificate(dir, "llp_certificate.pdf", {
+        issuer: "Ministry of Corporate Affairs",
+        sub: "Registrar of Companies · Form 16 · Limited Liability Partnership Act, 2008",
+        title: "Certificate of Incorporation of Limited Liability Partnership",
+        date: "2020-02-11",
+        intro: `It is hereby certified that ${d.legal_name.toUpperCase()} is incorporated under the Limited Liability Partnership Act, 2008 on this eleventh day of February two thousand twenty.`,
+        rows: [["LLP Name", d.legal_name], ["LLP Identification Number (LLPIN)", d.llpin!], ["Registered Office", address], ["Country", "India"]],
+        signer: "Registrar of Companies, Ahmedabad",
+      });
+    } else {
+      await certificate(dir, "incorporation_certificate.pdf", {
+        issuer: "Ministry of Corporate Affairs",
+        sub: "Registrar of Companies · Government of India",
+        title: "Certificate of Incorporation",
+        date: "2019-03-14",
+        intro: `I hereby certify that ${d.legal_name.replace(/Pvt Ltd$/, "Private Limited").toUpperCase()} is incorporated under the Companies Act, 2013, and that the company is limited by shares.`,
+        rows: [["Company Name", d.legal_name.replace(/Pvt Ltd$/, "Private Limited")], ["Corporate Identity Number (CIN)", d.cin!], ["PAN", d.pan], ["Registered Office", address]],
+        signer: "Registrar of Companies",
+      });
+    }
+  }
+  console.log(`Done. Bank letters are not used; cheques carry no date, so samples never go stale. Generated ${daysAgo(0)}.`);
 }
 
 main().catch((e) => {

@@ -1,11 +1,13 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { requireStaff } from "@/lib/auth";
 import { admin } from "@/lib/supabase/admin";
 import { RunView, type RunPayload } from "@/components/run-view";
 
 export const metadata: Metadata = { title: "Live run" };
 
 export default async function RunPage({ params }: PageProps<"/runs/[id]">) {
+  await requireStaff();
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const db = admin();
@@ -17,8 +19,7 @@ export default async function RunPage({ params }: PageProps<"/runs/[id]">) {
   if (!run) notFound();
   const [{ data: stages }, { data: submission }] = await Promise.all([
     db.from("run_stages").select("key, label, position, status, summary, output, error, started_at, finished_at").eq("run_id", id).order("position"),
-    db.from("submissions").select("id, ref, legal_name, country, status").eq("id", run.submission_id).single(),
+    db.from("submissions").select("id, ref, legal_name, status, vendor_id").eq("id", run.submission_id).single(),
   ]);
-  const initial = { run, stages: stages ?? [], submission } as unknown as RunPayload;
-  return <RunView initial={initial} />;
+  return <RunView initial={{ run, stages: stages ?? [], submission } as unknown as RunPayload} />;
 }

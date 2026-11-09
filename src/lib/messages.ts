@@ -1,4 +1,4 @@
-import type { Finding, SubmissionData } from "@/lib/types";
+import type { Finding } from "@/lib/types";
 
 export interface RequestItem {
   code: string;
@@ -8,26 +8,36 @@ export interface RequestItem {
   field?: string;
 }
 
-/** Fields a vendor is allowed to change when answering a request for this finding. */
+/** Fields a vendor is expected to change when answering a request for this finding. */
 export function fieldsForFinding(f: Pick<Finding, "code" | "field" | "slot">): string[] {
   const out = new Set<string>();
   if (f.field) out.add(f.field.startsWith("bank") ? "bank" : f.field);
   switch (f.code) {
     case "NAME_MISMATCH":
+    case "PAN_NAME_MISMATCH":
       out.add("legal_name");
       break;
     case "BANK_NAME_MISMATCH":
     case "BANK_ACCOUNT_CONFLICT":
-    case "BANK_DETAILS_INVALID":
-    case "BANK_COUNTRY_MISMATCH":
+    case "IFSC_DOCUMENT_CONFLICT":
+    case "IFSC_INVALID":
+    case "IFSC_NOT_FOUND":
+    case "IFSC_BANK_MISMATCH":
+    case "ACCOUNT_INVALID":
     case "SHARED_IDENTIFIER":
       out.add("bank");
       break;
-    case "TAX_ID_INVALID":
-    case "TAX_ID_COUNTRY_MISMATCH":
-    case "TAX_ID_DOCUMENT_CONFLICT":
-    case "TAX_ID_ENTITY_CONFLICT":
-      out.add("tax_id");
+    case "GSTIN_INVALID":
+    case "GSTIN_STATE_MISMATCH":
+    case "GSTIN_PAN_MISMATCH":
+    case "GSTIN_DOCUMENT_CONFLICT":
+      out.add("gstin");
+      out.add("pan");
+      break;
+    case "PAN_INVALID":
+    case "PAN_TYPE_MISMATCH":
+    case "PAN_DOCUMENT_CONFLICT":
+      out.add("pan");
       break;
   }
   if (f.slot) out.add(f.slot);
@@ -38,27 +48,8 @@ export function itemFromFinding(f: Finding): RequestItem {
   return {
     code: f.code,
     title: f.title,
-    action: f.vendorAction ?? f.detail,
+    action: f.vendorAction ?? `Please check and correct: ${f.title}. ${f.detail}`,
     slot: f.slot,
     field: f.field,
   };
-}
-
-/** Deterministic message: what is wrong, what to do. Never includes internal risk reasoning. */
-export function composeRequestMessage(data: SubmissionData, ref: string, items: RequestItem[], note?: string): string {
-  const lines = [
-    `Hello ${data.contact_name},`,
-    "",
-    `Thank you for submitting ${data.legal_name} for vendor onboarding (reference ${ref}). We could not complete verification yet. Please fix the following:`,
-    "",
-    ...items.map((it, i) => `${i + 1}. ${it.action}`),
-  ];
-  if (note?.trim()) lines.push("", `Note from our procurement team: ${note.trim()}`);
-  lines.push(
-    "",
-    "Reopen your submission with the secure link we sent you, make these changes and resubmit. Anything already verified does not need to be uploaded again.",
-    "",
-    "Vendor Onboarding Team",
-  );
-  return lines.join("\n");
 }

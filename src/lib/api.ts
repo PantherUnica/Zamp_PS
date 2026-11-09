@@ -19,9 +19,8 @@ export function fromError(err: unknown) {
   return fail(message, 500);
 }
 
-export function isToken(t: string) {
-  return /^[a-f0-9]{48}$/.test(t);
-}
+export const isToken = (t: string) => /^[a-f0-9]{48}$/.test(t);
+export const isUuid = (t: string) => /^[0-9a-f-]{36}$/.test(t);
 
 export function safeFileName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(-100);

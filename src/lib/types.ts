@@ -1,35 +1,49 @@
-export type Country = "IN" | "US" | "GB" | "DE";
-export type Slot = "tax_certificate" | "bank_proof" | "incorporation_certificate";
-export const SLOTS: Slot[] = ["tax_certificate", "bank_proof", "incorporation_certificate"];
+export type Constitution = "private_limited" | "public_limited" | "opc" | "llp" | "partnership" | "proprietorship";
+export type Slot = "gst_certificate" | "pan_card" | "bank_proof" | "incorporation_certificate" | "msme_certificate";
+export const SLOTS: Slot[] = ["gst_certificate", "pan_card", "bank_proof", "incorporation_certificate", "msme_certificate"];
+export type Role = "sales" | "reviewer" | "admin";
 
 export interface BankDetails {
   account_holder: string;
+  account_number: string;
+  ifsc: string;
   bank_name?: string;
-  bank_country: Country;
-  account_number?: string; // IN, US
-  ifsc?: string; // IN
-  routing_number?: string; // US
-  iban?: string; // GB, DE
-  bic?: string; // GB, DE (optional)
+  branch?: string;
+  account_type: "current" | "savings";
 }
 
+/** What the vendor submits. India only. */
 export interface SubmissionData {
   legal_name: string;
-  trading_name?: string;
-  country: Country;
-  registration_number: string;
-  tax_id: string;
-  address: string;
+  trade_name?: string;
+  constitution: Constitution;
+  cin?: string;
+  llpin?: string;
+  udyam?: string;
+  supplies?: string;
+  address_line: string;
+  city: string;
+  state: string; // GST state code, e.g. "29"
+  pincode: string;
   contact_name: string;
+  designation?: string;
   contact_email: string;
+  contact_phone: string;
+  gstin: string;
+  pan: string;
   bank: BankDetails;
 }
 
 export type Severity = "info" | "fixable" | "review" | "block";
 export type Recommendation = "approve" | "pending" | "reject";
-export type StageKey = "intake" | "read" | "validate" | "crosscheck" | "risk" | "decide" | "communicate";
+export type StageKey = "intake" | "read" | "validate" | "crosscheck" | "external" | "risk" | "decide" | "communicate";
 export type StageStatus = "pending" | "running" | "passed" | "warning" | "failed" | "skipped" | "error";
 export type CheckStatus = "pass" | "warn" | "fail" | "skip";
+/**
+ * Where a check's evidence comes from. Only "external" means a record outside this system
+ * was consulted. Format checks prove a value is well-formed, not that it exists.
+ */
+export type CheckSource = "format" | "document" | "external" | "internal" | "rules";
 
 export interface Evidence {
   label: string;
@@ -52,6 +66,7 @@ export interface Finding {
 export interface Check {
   id: string;
   stage: StageKey;
+  source: CheckSource;
   label: string;
   status: CheckStatus;
   detail: string;
@@ -60,15 +75,17 @@ export interface Check {
 
 export const EXTRACT_FIELDS = [
   "legal_name",
-  "tax_id",
-  "registration_number",
-  "country",
+  "trade_name",
+  "gstin",
+  "pan",
+  "cin",
+  "llpin",
+  "udyam",
   "address",
+  "state",
   "account_holder",
   "account_number",
-  "iban",
   "ifsc",
-  "routing_number",
   "bank_name",
   "issue_date",
   "expiry_date",
@@ -99,7 +116,7 @@ export interface DuplicateHit {
   ref: string;
   legal_name: string;
   status: string;
-  matched_on: "tax_id" | "bank_account";
+  matched_on: "gstin" | "pan" | "bank_account";
 }
 
 export interface RunResult {
@@ -115,17 +132,18 @@ export interface RunResult {
 export interface StageDef {
   key: StageKey;
   label: string;
-  kind: "rules" | "ai" | "rules+ai";
+  kind: "rules" | "ai" | "external";
 }
 
 export const STAGES: StageDef[] = [
   { key: "intake", label: "Intake and completeness", kind: "rules" },
-  { key: "read", label: "Document classification and extraction", kind: "ai" },
+  { key: "read", label: "Document reading", kind: "ai" },
   { key: "validate", label: "Format validation", kind: "rules" },
-  { key: "crosscheck", label: "Cross-checks", kind: "rules" },
+  { key: "crosscheck", label: "Document cross-checks", kind: "rules" },
+  { key: "external", label: "External records", kind: "external" },
   { key: "risk", label: "Risk and duplicates", kind: "rules" },
   { key: "decide", label: "Decision rules", kind: "rules" },
-  { key: "communicate", label: "Routing and vendor communication", kind: "rules" },
+  { key: "communicate", label: "Routing and communication", kind: "rules" },
 ];
 
 export type SubmissionStatus =
@@ -136,3 +154,29 @@ export type SubmissionStatus =
   | "approved"
   | "rejected"
   | "error";
+
+/** Structured output of a call-transcript analysis. */
+export interface CallAnalysis {
+  summary: string;
+  vendor: Record<
+    "company_name" | "contact_name" | "designation" | "contact_email" | "contact_phone" | "city" | "state" | "gstin" | "pan" | "supplies",
+    { value: string | null; evidence: string | null }
+  >;
+  requirements: string[];
+  action_items: { task: string; owner: "us" | "vendor"; due: string | null }[];
+  follow_up: { date: string | null; timeline: string | null };
+  intelligence: {
+    score: number;
+    signal: "strong" | "moderate" | "nurture" | "weak";
+    signal_reason: string;
+    interest_level: "high" | "medium" | "low";
+    sentiment: "positive" | "neutral" | "cautious" | "negative";
+    readiness: "exploring" | "evaluating" | "ready_to_onboard" | "blocked";
+    objections: string[];
+    objection_category: string | null;
+    key_concern_quote: string | null;
+    rep_insight: string;
+    next_step: string;
+  };
+  risk_signals: { signal: string; quote: string | null }[];
+}

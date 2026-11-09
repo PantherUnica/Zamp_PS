@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { config } from "dotenv";
 import pg from "pg";
 
-config({ path: ".env.local" });
+config({ path: [".env.local", ".env"], quiet: true });
 
 async function main() {
   const url = process.env.SUPABASE_DB_URL;

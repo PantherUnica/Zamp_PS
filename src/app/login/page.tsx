@@ -1,22 +1,28 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getReviewer } from "@/lib/auth";
+import { getStaff } from "@/lib/auth";
+import { authClient } from "@/lib/supabase/server";
 import { Mark } from "@/components/app-shell";
 import { LoginForm } from "@/components/login-form";
 
-export const metadata: Metadata = { title: "Reviewer sign in" };
+export const metadata: Metadata = { title: "Sign in" };
 
 export default async function Login({ searchParams }: PageProps<"/login">) {
   const sp = await searchParams;
   const next = typeof sp.next === "string" && sp.next.startsWith("/") && !sp.next.startsWith("//") ? sp.next : "/dashboard";
-  if (await getReviewer()) redirect(next);
+  if (await getStaff()) redirect(next);
+  const { data } = await (await authClient()).auth.getUser();
+  const notMember = Boolean(data.user);
+  const error = sp.error === "link" ? "That sign-in link has expired or was already used. Ask an admin for a new one." : notMember ? "Your login is not part of this workspace yet. Ask an admin to add you." : null;
   return (
-    <main className="grid min-h-dvh place-items-center px-4">
+    <main className="grid min-h-dvh place-items-center bg-surface px-4">
       <div className="w-full max-w-[360px]">
-        <Mark />
-        <h1 className="mt-8 text-lg font-semibold">Reviewer sign in</h1>
-        <p className="mt-1 text-sm text-muted">Procurement reviewers approve, reject and follow up on vendor submissions.</p>
-        <LoginForm next={next} />
+        <Link href="/"><Mark /></Link>
+        <h1 className="mt-10 font-display text-[36px] leading-tight">Welcome back</h1>
+        <p className="mt-2 mb-8 text-sm text-muted">Sign in to log calls, send onboarding links and review vendors.</p>
+        <LoginForm next={next} error={error} />
+        <p className="mt-8 text-xs text-muted">Vendors do not need an account. Use the link in your invitation email.</p>
       </div>
     </main>
   );
